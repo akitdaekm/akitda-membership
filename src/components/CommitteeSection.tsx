@@ -14,9 +14,9 @@ type OfficeBearer = {
   order: number;
 };
 
-export function CommitteeSection({ officeBearers }: { officeBearers: OfficeBearer[] }) {
-  const districtBearers = officeBearers.filter((b) => b.level === "DISTRICT");
-  const stateBearers = officeBearers.filter((b) => b.level === "STATE");
+export function CommitteeSection({ officeBearers = [] }: { officeBearers?: OfficeBearer[] }) {
+  const districtBearers = (officeBearers || []).filter((b) => b.level === "DISTRICT");
+  const stateBearers = (officeBearers || []).filter((b) => b.level === "STATE");
 
   const renderGrid = (bearers: OfficeBearer[], emptyMessage: string) => {
     if (bearers.length === 0) {

@@ -11,9 +11,14 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const officeBearers = await prisma.officeBearer.findMany({
-    orderBy: { order: 'asc' }
-  });
+  let officeBearers = [];
+  try {
+    officeBearers = await prisma.officeBearer.findMany({
+      orderBy: { order: 'asc' }
+    });
+  } catch (err) {
+    console.error("Failed to load office bearers on home page:", err);
+  }
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
