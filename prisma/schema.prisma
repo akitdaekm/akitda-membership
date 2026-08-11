@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Member {
+  id            String    @id @default(cuid())
+  companyName   String
+  companyType   String
+  memberType    String    @default("NEW") // NEW, EXISTING
+  addressBuilding String
+  addressArea   String
+  district      String?
+  unit          String?
+  pincode       String?
+  primaryMobile String    @unique
+  primaryEmail  String    @unique
+  gstNumber     String    @unique
+  gstFile       String?
+  profilePhoto  String?
+  status        String    @default("PENDING")
+  membershipId      String?   @unique
+  approvalPresident Boolean   @default(false)
+  approvalSecretary Boolean   @default(false)
+  approvalTreasurer Boolean   @default(false)
+  validUntil        DateTime? // Tracks membership expiry date
+  otp               String?
+  otpExpiry         DateTime?
+  joinedAt          DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  partners          Partner[]
+  payments          Payment[]
+
+  // Relation to Unit
+  unitId            String?
+  unitRel           Unit?     @relation(fields: [unitId], references: [id])
+}
+
+model Unit {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  coordinatorName  String?
+  coordinatorPhone String?
+  members          Member[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Partner {
+  id       String  @id @default(cuid())
+  name     String
+  phone    String?
+  email    String?
+  photoFile String?
+  memberId String
+  member   Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id            String    @id @default(cuid())
+  amount        Float
+  breakdown     String?   // JSON string for breakdown details
+  year          Int
+  status        String    @default("PENDING") // PENDING, PAID, VERIFIED
+  transactionId String?
+  paymentDate   DateTime?
+  receiptNumber String?   @unique
+  receiptUrl    String?
+  memberId      String
+  createdAt     DateTime  @default(now())
+  member        Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("SUPER_ADMIN") // SUPER_ADMIN, PRESIDENT, SECRETARY, TREASURER
+  name      String?
+  phone     String?
+  whatsapp  String?
+  otp       String?
+  otpExpiry DateTime?
+}
+
+model OfficeBearer {
+  id        String   @id @default(cuid())
+  name      String
+  position  String   // e.g. President, Secretary
+  level     String   // STATE, DISTRICT
+  district  String?  // e.g. "Kochi", "Trivandrum" (only if level is DISTRICT)
+  phone     String?
+  photoUrl  String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GalleryItem {
+  id          String   @id @default(cuid())
+  title       String?
+  type        String   // PHOTO, VIDEO
+  url         String
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
