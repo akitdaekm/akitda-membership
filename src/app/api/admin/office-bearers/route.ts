@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { saveUploadedFile } from "@/lib/upload";
 
 export async function GET() {
     try {
@@ -19,7 +18,7 @@ export async function POST(request: Request) {
         const formData = await request.formData();
         const name = formData.get("name") as string;
         const position = formData.get("position") as string;
-        const level = formData.get("level") as string; // STATE or DISTRICT
+        const level = formData.get("level") as string;
         const district = formData.get("district") as string | null;
         const phone = formData.get("phone") as string | null;
 
@@ -34,17 +33,8 @@ export async function POST(request: Request) {
 
         let photoUrl = null;
 
-        // Check if photoFile is a valid File object and has content
         if (photoFile && photoFile instanceof File && photoFile.size > 0 && photoFile.name !== "undefined") {
-            const uploadDir = join(process.cwd(), "public", "uploads", "bearers");
-            await mkdir(uploadDir, { recursive: true });
-
-            const bytes = await photoFile.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-            const filename = `bearer-${Date.now()}-${photoFile.name.replace(/\s+/g, "_")}`;
-            const filepath = join(uploadDir, filename);
-            await writeFile(filepath, buffer);
-            photoUrl = `/uploads/bearers/${filename}`;
+            photoUrl = await saveUploadedFile(photoFile, "uploads/bearers", "bearer");
         }
 
         const bearer = await prisma.officeBearer.create({

@@ -3,9 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { verifyAndClearOtp } from "@/lib/otp";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import fs from "fs";
+import { saveUploadedFile } from "@/lib/upload";
 
 export async function POST(request: Request) {
     try {
@@ -51,17 +49,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: "No file uploaded" }, { status: 400 });
         }
 
-        const bytes = await file.arrayBuffer();
-        const uploadDir = join(process.cwd(), "public", "uploads", type as string);
-        if (!fs.existsSync(uploadDir)) {
-            await mkdir(uploadDir, { recursive: true });
-        }
-
-        const filename = `${memberId}-${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
-        const filepath = join(uploadDir, filename);
-        await writeFile(filepath, Buffer.from(bytes));
-
-        const publicUrl = `/uploads/${type}/${filename}`;
+        const publicUrl = await saveUploadedFile(file, `uploads/${type}`, memberId);
 
         if (type === "gst") {
             await prisma.member.update({

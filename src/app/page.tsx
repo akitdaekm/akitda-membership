@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  let officeBearers = [];
+  let officeBearers: any[] = [];
   try {
     officeBearers = await prisma.officeBearer.findMany({
       orderBy: { order: 'asc' }

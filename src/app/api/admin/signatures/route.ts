@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
+import { saveUploadedFile } from "@/lib/upload";
 
 export async function GET() {
     try {
@@ -46,19 +43,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "No file provided" }, { status: 400 });
         }
 
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-
-        const uploadDir = path.join(process.cwd(), "public", "uploads", "signatures");
-        await mkdir(uploadDir, { recursive: true });
-
-        const ext = path.extname(file.name) || ".png";
-        const fileName = `${role}_${Date.now()}${ext}`;
-        const filePath = path.join(uploadDir, fileName);
-
-        await writeFile(filePath, buffer);
-
-        const publicUrl = `/uploads/signatures/${fileName}`;
+        const publicUrl = await saveUploadedFile(file, "uploads/signatures", role);
         const key = role === "seal" ? "official_seal_url" : `${role}_signature_url`;
 
         await prisma.setting.upsert({

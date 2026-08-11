@@ -3,9 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { verifyAndClearOtp } from "@/lib/otp";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import fs from "fs";
+import { saveUploadedFile } from "@/lib/upload";
 
 export async function POST(request: Request) {
     try {
@@ -29,7 +27,6 @@ export async function POST(request: Request) {
 
         const formData = await request.formData();
 
-        // This endpoint can Handle Adding a NEW Partner, OR updating an EXISTING Partner's photo.
         const action = formData.get("action"); // "add" or "update_photo"
         const partnerName = formData.get("name") as string;
         const partnerPhone = formData.get("phone") as string;
@@ -39,16 +36,7 @@ export async function POST(request: Request) {
         let photoUrl = null;
 
         if (file && file.size > 0 && file.name !== "undefined") {
-            const bytes = await file.arrayBuffer();
-            const uploadDir = join(process.cwd(), "public", "uploads", "partners");
-            if (!fs.existsSync(uploadDir)) {
-                await mkdir(uploadDir, { recursive: true });
-            }
-
-            const filename = `${memberId}-${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
-            const filepath = join(uploadDir, filename);
-            await writeFile(filepath, Buffer.from(bytes));
-            photoUrl = `/uploads/partners/${filename}`;
+            photoUrl = await saveUploadedFile(file, "uploads/partners", memberId);
         }
 
         if (action === "update_photo") {
@@ -61,7 +49,6 @@ export async function POST(request: Request) {
             if (!targetPartnerId) return NextResponse.json({ message: "Partner ID required" }, { status: 400 });
             if (!photoUrl) return NextResponse.json({ message: "Photo file required for updating" }, { status: 400 });
 
-            // Verify partner belongs to this member
             const partner = await prisma.partner.findFirst({
                 where: { id: targetPartnerId, memberId }
             });

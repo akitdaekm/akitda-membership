@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { saveUploadedFile } from "@/lib/upload";
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -19,8 +18,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
         const photoFile = formData.get("photoFile");
 
-        // Prepare update data
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data: any = {
             name,
             position,
@@ -30,17 +27,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
             order: isNaN(order) ? 0 : order,
         };
 
-        // Handle Photo File if present and valid
         if (photoFile && photoFile instanceof File && photoFile.size > 0 && photoFile.name !== "undefined") {
-            const uploadDir = join(process.cwd(), "public", "uploads", "bearers");
-            await mkdir(uploadDir, { recursive: true });
-
-            const bytes = await photoFile.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-            const filename = `bearer-${Date.now()}-${photoFile.name.replace(/\s+/g, "_")}`;
-            const filepath = join(uploadDir, filename);
-            await writeFile(filepath, buffer);
-            data.photoUrl = `/uploads/bearers/${filename}`;
+            data.photoUrl = await saveUploadedFile(photoFile, "uploads/bearers", "bearer");
         }
 
         const bearer = await prisma.officeBearer.update({
