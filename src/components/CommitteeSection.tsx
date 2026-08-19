@@ -29,11 +29,11 @@ export function CommitteeSection({ officeBearers = [] }: { officeBearers?: Offic
 
     return (
       <>
-        {/* Row 1: 1-5 */}
-        <div className="flex flex-wrap justify-center gap-1 mb-2">
+        {/* Row 1: 1-5 (Top Office Bearers) */}
+        <div className="flex flex-wrap justify-center gap-2 mb-4">
           {bearers.slice(0, 5).map((bearer) => (
-            <div key={bearer.id} className="text-center group w-36">
-              <div className="h-28 w-28 mx-auto bg-blue-800/50 rounded-full mb-2 overflow-hidden relative border-4 border-blue-400/20 group-hover:border-blue-400 transition-colors">
+            <div key={bearer.id} className="text-center group w-32 md:w-36">
+              <div className="h-24 w-24 md:h-28 md:w-28 mx-auto bg-blue-800/50 rounded-full mb-2 overflow-hidden relative border-4 border-blue-400/20 group-hover:border-blue-400 transition-colors">
                 {bearer.photoUrl ? (
                   <img src={bearer.photoUrl} alt={bearer.name} className="object-cover object-top w-full h-full" />
                 ) : (
@@ -42,17 +42,17 @@ export function CommitteeSection({ officeBearers = [] }: { officeBearers?: Offic
                   </div>
                 )}
               </div>
-              <h4 className="text-base font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors leading-tight">{bearer.name}</h4>
+              <h4 className="text-sm md:text-base font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors leading-tight">{bearer.name}</h4>
               <p className="text-blue-200 text-xs font-medium mb-1">{bearer.position}</p>
             </div>
           ))}
         </div>
 
-        {/* Row 2: 6-9 */}
-        <div className="flex flex-wrap justify-center gap-1 mb-2">
+        {/* Row 2: 6-9 (Other Bearers) */}
+        <div className="flex flex-wrap justify-center gap-2 mb-4">
           {bearers.slice(5, 9).map((bearer) => (
-            <div key={bearer.id} className="text-center group w-36">
-              <div className="h-28 w-28 mx-auto bg-blue-800/50 rounded-full mb-2 overflow-hidden relative border-4 border-blue-400/20 group-hover:border-blue-400 transition-colors">
+            <div key={bearer.id} className="text-center group w-32 md:w-36">
+              <div className="h-24 w-24 md:h-28 md:w-28 mx-auto bg-blue-800/50 rounded-full mb-2 overflow-hidden relative border-4 border-blue-400/20 group-hover:border-blue-400 transition-colors">
                 {bearer.photoUrl ? (
                   <img src={bearer.photoUrl} alt={bearer.name} className="object-cover object-top w-full h-full" />
                 ) : (
@@ -61,17 +61,17 @@ export function CommitteeSection({ officeBearers = [] }: { officeBearers?: Offic
                   </div>
                 )}
               </div>
-              <h4 className="text-base font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors leading-tight">{bearer.name}</h4>
+              <h4 className="text-sm md:text-base font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors leading-tight">{bearer.name}</h4>
               <p className="text-blue-200 text-xs font-medium mb-1">{bearer.position}</p>
             </div>
           ))}
         </div>
 
-        {/* Row 3: 10+ */}
-        <div className="flex flex-wrap justify-center gap-1">
+        {/* Row 3: 10-16 (All Executive Members) */}
+        <div className="flex flex-wrap justify-center gap-2 md:gap-3 max-w-7xl mx-auto">
           {bearers.slice(9).map((bearer) => (
-            <div key={bearer.id} className="text-center group w-36">
-              <div className="h-28 w-28 mx-auto bg-blue-800/50 rounded-full mb-2 overflow-hidden relative border-4 border-blue-400/20 group-hover:border-blue-400 transition-colors">
+            <div key={bearer.id} className="text-center group w-28 md:w-32">
+              <div className="h-24 w-24 md:h-26 md:w-26 mx-auto bg-blue-800/50 rounded-full mb-2 overflow-hidden relative border-4 border-blue-400/20 group-hover:border-blue-400 transition-colors">
                 {bearer.photoUrl ? (
                   <img src={bearer.photoUrl} alt={bearer.name} className="object-cover object-top w-full h-full" />
                 ) : (
@@ -80,7 +80,7 @@ export function CommitteeSection({ officeBearers = [] }: { officeBearers?: Offic
                   </div>
                 )}
               </div>
-              <h4 className="text-base font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors leading-tight">{bearer.name}</h4>
+              <h4 className="text-sm md:text-base font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors leading-tight">{bearer.name}</h4>
               <p className="text-blue-200 text-xs font-medium mb-1">{bearer.position}</p>
             </div>
           ))}
