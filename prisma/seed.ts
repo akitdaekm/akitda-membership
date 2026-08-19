@@ -137,13 +137,22 @@ async function main() {
             order: 12
         },
         {
+            name: "Ismail P S",
+            position: "Executive member",
+            level: "DISTRICT",
+            district: "Ernakulam",
+            phone: "",
+            photoUrl: null,
+            order: 13
+        },
+        {
             name: "Eldhose",
             position: "Executive member",
             level: "DISTRICT",
             district: "Ernakulam",
             phone: "9447229404",
             photoUrl: "/uploads/bearers/bearer-1771400335982-Eldho_Paul.jpeg",
-            order: 13
+            order: 14
         },
         {
             name: "Thomas Paul",
@@ -152,7 +161,7 @@ async function main() {
             district: "Ernakulam",
             phone: "9847724909",
             photoUrl: "/uploads/bearers/bearer-1771400441049-Thomas_Paul.jpeg",
-            order: 14
+            order: 15
         },
         {
             name: "Rejaneesh Kumar",
@@ -161,7 +170,7 @@ async function main() {
             district: "Ernakulam",
             phone: "9895433716",
             photoUrl: "/uploads/bearers/bearer-1771400519647-Rejaneesh_kumar_T_R.jpeg",
-            order: 15
+            order: 16
         },
         {
             name: "Hareesh Kumar K",
@@ -185,11 +194,20 @@ async function main() {
 
     for (const b of bearers) {
         const existing = await prisma.officeBearer.findFirst({
-            where: { name: b.name, position: b.position, level: b.level }
+            where: {
+                level: b.level,
+                order: b.order
+            }
         });
-        if (!existing) {
+        if (existing) {
+            await prisma.officeBearer.update({
+                where: { id: existing.id },
+                data: b
+            });
+            console.log(`Updated office bearer #${b.order}: ${b.name} (${b.position})`);
+        } else {
             await prisma.officeBearer.create({ data: b });
-            console.log(`Seeded office bearer: ${b.name} (${b.position})`);
+            console.log(`Created office bearer #${b.order}: ${b.name} (${b.position})`);
         }
     }
 }
