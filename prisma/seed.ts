@@ -142,7 +142,7 @@ async function main() {
             level: "DISTRICT",
             district: "Ernakulam",
             phone: "",
-            photoUrl: null,
+            photoUrl: "/uploads/bearers/bearer-1771400600000-ismail.jpeg",
             order: 13
         },
         {
