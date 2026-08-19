@@ -5,7 +5,10 @@ import { saveUploadedFile } from "@/lib/upload";
 export async function GET() {
     try {
         const bearers = await prisma.officeBearer.findMany({
-            orderBy: { order: "asc" },
+            orderBy: [
+                { level: "asc" },
+                { order: "asc" }
+            ],
         });
         return NextResponse.json(bearers);
     } catch {

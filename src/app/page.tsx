@@ -14,7 +14,10 @@ export default async function Home() {
   let officeBearers: any[] = [];
   try {
     officeBearers = await prisma.officeBearer.findMany({
-      orderBy: { order: 'asc' }
+      orderBy: [
+        { level: "asc" },
+        { order: "asc" }
+      ]
     });
   } catch (err) {
     console.error("Failed to load office bearers on home page:", err);
