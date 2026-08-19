@@ -67,9 +67,9 @@ export function CommitteeSection({ officeBearers = [] }: { officeBearers?: Offic
           ))}
         </div>
 
-        {/* Row 3: 10-15 */}
+        {/* Row 3: 10+ */}
         <div className="flex flex-wrap justify-center gap-1">
-          {bearers.slice(9, 15).map((bearer) => (
+          {bearers.slice(9).map((bearer) => (
             <div key={bearer.id} className="text-center group w-36">
               <div className="h-28 w-28 mx-auto bg-blue-800/50 rounded-full mb-2 overflow-hidden relative border-4 border-blue-400/20 group-hover:border-blue-400 transition-colors">
                 {bearer.photoUrl ? (

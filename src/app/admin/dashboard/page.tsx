@@ -27,6 +27,10 @@ import * as XLSX from "xlsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { MemberIDCardDocument } from "@/components/IDCard";
+import { MembershipCertificate } from "@/components/Certificate";
+import { getFinancialYear } from "@/lib/financial-year";
 
 // --- Types ---
 
@@ -105,8 +109,10 @@ export default function AdminDashboard() {
         officialSealUrl: null,
     });
     const [uploadingSignature, setUploadingSignature] = useState<string | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
+        setIsMounted(true);
         fetchAdminAndData();
     }, []);
 
@@ -719,18 +725,61 @@ export default function AdminDashboard() {
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="flex gap-2 mb-2">
-                                                            {member.gstFile && (
-                                                                <a href={member.gstFile} target="_blank" rel="noopener noreferrer">
-                                                                    <Button size="sm" variant="ghost" className="h-6 px-2">GST</Button>
-                                                                </a>
-                                                            )}
-                                                            {member.photoFile && (
-                                                                <a href={member.photoFile} target="_blank" rel="noopener noreferrer">
-                                                                    <Button size="sm" variant="ghost" className="h-6 px-2">Photo</Button>
-                                                                </a>
-                                                            )}
-                                                        </div>
+                                                         <div className="flex gap-2 mb-2">
+                                                             {member.gstFile && (
+                                                                 <a href={member.gstFile} target="_blank" rel="noopener noreferrer">
+                                                                     <Button size="sm" variant="ghost" className="h-6 px-2">GST</Button>
+                                                                 </a>
+                                                             )}
+                                                             {member.photoFile && (
+                                                                 <a href={member.photoFile} target="_blank" rel="noopener noreferrer">
+                                                                     <Button size="sm" variant="ghost" className="h-6 px-2">Photo</Button>
+                                                                 </a>
+                                                             )}
+                                                         </div>
+                                                         {member.status === "ACTIVE" && isMounted && (
+                                                             <div className="flex flex-col gap-1 mt-1 pt-1 border-t border-slate-800">
+                                                                 <PDFDownloadLink
+                                                                     document={
+                                                                         <MemberIDCardDocument
+                                                                             companyName={member.companyName}
+                                                                             proprietorName={member.partners?.[0]?.name}
+                                                                             membershipId={member.membershipId || ""}
+                                                                             primaryMobile={member.primaryMobile}
+                                                                             primaryEmail={member.primaryEmail}
+                                                                             district={member.district || "Ernakulam"}
+                                                                             unit={member.unit || undefined}
+                                                                             profilePhoto={member.photoFile}
+                                                                             financialYear={getFinancialYear().label}
+                                                                             presidentSignatureUrl={signatures.presidentSignatureUrl}
+                                                                             secretarySignatureUrl={signatures.secretarySignatureUrl}
+                                                                             officialSealUrl={signatures.officialSealUrl}
+                                                                         />
+                                                                     }
+                                                                     fileName={`AKITDA_ID_Card_${member.membershipId}.pdf`}
+                                                                     className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1"
+                                                                 >
+                                                                     {({ loading }) => (loading ? "..." : "🪪 ID Card")}
+                                                                 </PDFDownloadLink>
+                                                                 <PDFDownloadLink
+                                                                     document={
+                                                                         <MembershipCertificate
+                                                                             memberName={member.companyName}
+                                                                             membershipId={member.membershipId || ""}
+                                                                             financialYear={getFinancialYear().label}
+                                                                             presidentSignatureUrl={signatures.presidentSignatureUrl || undefined}
+                                                                             secretarySignatureUrl={signatures.secretarySignatureUrl || undefined}
+                                                                             treasurerSignatureUrl={signatures.treasurerSignatureUrl || undefined}
+                                                                             officialSealUrl={signatures.officialSealUrl || undefined}
+                                                                         />
+                                                                     }
+                                                                     fileName={`AKITDA_Certificate_${member.membershipId}.pdf`}
+                                                                     className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1"
+                                                                 >
+                                                                     {({ loading }) => (loading ? "..." : "📜 Certificate")}
+                                                                 </PDFDownloadLink>
+                                                             </div>
+                                                         )}
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex gap-4 items-center">

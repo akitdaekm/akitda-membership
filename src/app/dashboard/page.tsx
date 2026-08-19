@@ -20,6 +20,7 @@ import { PDFDownloadLink } from "@react-pdf/renderer";
 import { MembershipCertificate } from "@/components/Certificate";
 import { ReceiptDocument } from "@/components/Receipt";
 import { TaxInvoice } from "@/components/TaxInvoice";
+import { MemberIDCardDocument } from "@/components/IDCard";
 import { useRouter } from "next/navigation";
 import { getFinancialYear } from "@/lib/financial-year";
 
@@ -885,6 +886,47 @@ export default function MemberDashboard() {
                                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest pl-1">Legal Documents</h3>
 
                                 {/* GST Certificate moved to Company Profile section */}
+
+                                {/* Digital ID Card */}
+                                <Card className="overflow-hidden hover:border-amber-400 transition-colors group cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-md">
+                                    <div className="p-3 flex items-center gap-3">
+                                        <div className="h-8 w-8 rounded-md bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                                            <CreditCard className="h-4 w-4" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-white text-sm">Digital Membership ID Card</h4>
+                                            <p className="text-[10px] text-slate-400 line-clamp-1">Official ID Badge with QR Verification</p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-900/50 px-3 py-2 border-t border-slate-700 group-hover:bg-amber-900/20 transition-colors">
+                                        {isMounted && (
+                                            <PDFDownloadLink
+                                                document={
+                                                    <MemberIDCardDocument
+                                                        companyName={member.companyName}
+                                                        proprietorName={member.partners?.[0]?.name}
+                                                        membershipId={member.membershipId || ""}
+                                                        primaryMobile={member.primaryMobile}
+                                                        primaryEmail={member.primaryEmail}
+                                                        district={member.district}
+                                                        unit={member.unit || undefined}
+                                                        profilePhoto={member.profilePhoto || member.partners?.[0]?.photoFile}
+                                                        financialYear={getFinancialYear().label}
+                                                        presidentSignatureUrl={signatures.presidentSignatureUrl}
+                                                        secretarySignatureUrl={signatures.secretarySignatureUrl}
+                                                        officialSealUrl={(signatures as any).officialSealUrl}
+                                                    />
+                                                }
+                                                fileName={`AKITDA_ID_Card_${member.membershipId}.pdf`}
+                                                className="text-xs font-medium text-amber-400 hover:text-amber-300 flex items-center justify-center gap-1.5 w-full"
+                                            >
+                                                {({ loading }) => (
+                                                    <>{loading ? "Generating..." : <><Download className="h-3 w-3" /> Download ID Card (PDF)</>}</>
+                                                )}
+                                            </PDFDownloadLink>
+                                        )}
+                                    </div>
+                                </Card>
 
                                 <Card className="overflow-hidden hover:border-blue-400 transition-colors group cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-md">
                                     <div className="p-3 flex items-center gap-3">
