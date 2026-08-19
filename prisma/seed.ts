@@ -192,23 +192,12 @@ async function main() {
         }
     ];
 
+    await prisma.officeBearer.deleteMany({});
+    console.log("Cleared old office bearers.");
+
     for (const b of bearers) {
-        const existing = await prisma.officeBearer.findFirst({
-            where: {
-                level: b.level,
-                order: b.order
-            }
-        });
-        if (existing) {
-            await prisma.officeBearer.update({
-                where: { id: existing.id },
-                data: b
-            });
-            console.log(`Updated office bearer #${b.order}: ${b.name} (${b.position})`);
-        } else {
-            await prisma.officeBearer.create({ data: b });
-            console.log(`Created office bearer #${b.order}: ${b.name} (${b.position})`);
-        }
+        await prisma.officeBearer.create({ data: b });
+        console.log(`Seeded office bearer #${b.order} [${b.level}]: ${b.name} (${b.position})`);
     }
 }
 
