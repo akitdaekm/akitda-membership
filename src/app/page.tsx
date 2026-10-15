@@ -2,6 +2,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { AnimatedHero } from "@/components/AnimatedHero";
 import { CommitteeSection } from "@/components/CommitteeSection";
+import { AboutSlideshow } from "@/components/AboutSlideshow";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Users, HandHeart, Calendar, CheckCircle2 } from "lucide-react";
@@ -37,11 +38,7 @@ export default async function Home() {
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-r from-orange-400 to-orange-300 rounded-2xl transform -rotate-2 opacity-50"></div>
               <div className="relative h-[400px] w-full rounded-xl overflow-hidden shadow-2xl bg-white">
-                <img
-                  src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"
-                  alt="AKITDA Meetings"
-                  className="w-full h-full object-cover"
-                />
+                <AboutSlideshow />
               </div>
             </div>
             <div>
@@ -124,7 +121,7 @@ export default async function Home() {
               <a href="https://itshoppe.in/" target="_blank" rel="noopener noreferrer" className="block focus:outline-none focus:ring-2 focus:ring-orange-300 rounded-2xl h-full group">
                 <div className="bg-orange-700/50 rounded-2xl p-6 border border-orange-500/20 hover:bg-orange-700 transition-colors flex flex-col items-center text-center h-full cursor-pointer">
                   <div className="h-32 w-full flex items-center justify-center mb-6">
-                    <img src="/logos/img2_transparent.png" alt="IT Shoppe Logo" className="w-full h-full max-h-24 object-contain" />
+                    <img src="/logos/img2_trimmed.png" alt="IT Shoppe Logo" className="w-full max-w-[90%] h-full max-h-24 object-contain" />
                   </div>
                   <h4 className="text-xl font-bold text-white mb-2 group-hover:underline">IT Shoppe</h4>
                   <p className="text-orange-100/80 text-sm leading-relaxed">

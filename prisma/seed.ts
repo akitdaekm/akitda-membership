@@ -34,7 +34,7 @@ async function main() {
             level: "DISTRICT",
             district: "Ernakulam",
             phone: "9847724914",
-            photoUrl: "/uploads/bearers/bearer-1771398419548-antony_ma.jpeg",
+            photoUrl: "/uploads/bearers/bearer-1770970460687-antony_ma.jpeg",
             order: 1
         },
         {
@@ -43,7 +43,7 @@ async function main() {
             level: "DISTRICT",
             district: "Ernakulam",
             phone: "9847036968",
-            photoUrl: "/uploads/bearers/bearer-1771398476610-Navas_T_Backer.JPG",
+            photoUrl: "/uploads/bearers/bearer-1770988133724-Navas_T_Backer.JPG",
             order: 2
         },
         {
@@ -52,7 +52,7 @@ async function main() {
             level: "DISTRICT",
             district: "Ernakulam",
             phone: "98479 64109",
-            photoUrl: "/uploads/bearers/bearer-1771398521582-subhash_t_s.jpeg",
+            photoUrl: "/uploads/bearers/bearer-1770988331592-subhash_t_s.jpeg",
             order: 3
         },
         {
@@ -61,7 +61,7 @@ async function main() {
             level: "DISTRICT",
             district: "Ernakulam",
             phone: "94470 13115",
-            photoUrl: "/uploads/bearers/bearer-1771398636204-antony_t_a.jpg",
+            photoUrl: "/uploads/bearers/bearer-1770990600873-antony_t_a.jpg",
             order: 4
         },
         {
@@ -187,7 +187,7 @@ async function main() {
             level: "STATE",
             district: "Ernakulam",
             phone: "",
-            photoUrl: "/uploads/bearers/bearer-1774611944565-dileep.jpeg",
+            photoUrl: "/uploads/bearers/bearer-1771400155953-dileep.jpeg",
             order: 2
         }
     ];
