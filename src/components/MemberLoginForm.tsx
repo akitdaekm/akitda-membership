@@ -25,120 +25,95 @@ const otpSchema = z.object({
     otp: z.string().length(6, "OTP must be 6 digits"),
 });
 
-// 6-box OTP component: Synchronous ref tracking to guarantee 100% full 6-digit sync with form
+// Single overlay OTP component: Guarantees 100% synchronization with form, mobile autofill, and paste
 function SixBoxOtpInput({
-    value,
+    value = "",
     onChange,
-    onComplete,
 }: {
     value: string;
     onChange: (val: string) => void;
-    onComplete?: (code: string) => void;
 }) {
-    // Keep a synchronous ref array to eliminate any state-closure race conditions
-    const digitsRef = useRef<string[]>(["", "", "", "", "", ""]);
-    const [, forceUpdate] = useState(0);
-    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [isFocused, setIsFocused] = useState(false);
 
     useEffect(() => {
-        inputRefs.current[0]?.focus();
+        // Automatically focus on mount
+        inputRef.current?.focus();
     }, []);
 
-    useEffect(() => {
-        if (!value) {
-            digitsRef.current = ["", "", "", "", "", ""];
-            forceUpdate(n => n + 1);
-        } else if (value !== digitsRef.current.join("")) {
-            const arr = value.slice(0, 6).split("");
-            while (arr.length < 6) arr.push("");
-            digitsRef.current = arr;
-            forceUpdate(n => n + 1);
-        }
-    }, [value]);
-
-    const handleInput = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value.replace(/[^0-9]/g, "");
-        const char = val ? val.slice(-1) : "";
-
-        digitsRef.current[index] = char;
-        const fullString = digitsRef.current.join("");
-
-        // Immediate synchronous state update
-        forceUpdate(n => n + 1);
-
-        // Update react-hook-form
-        onChange(fullString);
-
-        if (fullString.length === 6 && onComplete) {
-            onComplete(fullString);
-        }
-
-        // Auto move to next input box
-        if (char && index < 5) {
-            inputRefs.current[index + 1]?.focus();
-        }
-    };
-
-    const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Backspace") {
-            if (!digitsRef.current[index] && index > 0) {
-                digitsRef.current[index - 1] = "";
-                forceUpdate(n => n + 1);
-                onChange(digitsRef.current.join(""));
-                inputRefs.current[index - 1]?.focus();
-            }
-        } else if (e.key === "ArrowLeft" && index > 0) {
-            inputRefs.current[index - 1]?.focus();
-        } else if (e.key === "ArrowRight" && index < 5) {
-            inputRefs.current[index + 1]?.focus();
-        }
-    };
-
-    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-        e.preventDefault();
-        const pasted = e.clipboardData.getData("text").replace(/[^0-9]/g, "").slice(0, 6);
-        if (pasted) {
-            const arr = pasted.split("");
-            while (arr.length < 6) arr.push("");
-            digitsRef.current = arr;
-            forceUpdate(n => n + 1);
-            const fullString = digitsRef.current.join("");
-            onChange(fullString);
-            if (fullString.length === 6 && onComplete) {
-                onComplete(fullString);
-            }
-            const focusTarget = Math.min(pasted.length, 5);
-            inputRefs.current[focusTarget]?.focus();
-        }
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const cleaned = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+        onChange(cleaned);
     };
 
     return (
-        <div className="flex items-center justify-center gap-2 sm:gap-3 py-2">
-            {[0, 1, 2, 3, 4, 5].map((idx) => (
-                <React.Fragment key={idx}>
-                    {idx === 3 && (
-                        <span className="text-blue-300 font-bold text-2xl select-none px-1">-</span>
-                    )}
-                    <input
-                        ref={(el) => { inputRefs.current[idx] = el; }}
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={1}
-                        value={digitsRef.current[idx] || ""}
-                        onChange={(e) => handleInput(idx, e)}
-                        onKeyDown={(e) => handleKeyDown(idx, e)}
-                        onPaste={handlePaste}
-                        style={{
-                            color: "#ffffff",
-                            WebkitTextFillColor: "#ffffff",
-                            backgroundColor: "#0f172a",
-                            caretColor: "#38bdf8",
-                        }}
-                        className="w-11 h-14 sm:w-12 sm:h-14 text-center text-3xl font-extrabold border-2 border-blue-400 rounded-xl focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/40 outline-none transition-all shadow-lg select-text"
-                    />
-                </React.Fragment>
-            ))}
+        <div
+            className="relative py-2 flex items-center justify-center cursor-text"
+            onClick={() => inputRef.current?.focus()}
+        >
+            {/* The single true input: perfectly captures typing, mobile keyboard, clipboard paste, autofill */}
+            <input
+                ref={inputRef}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                autoComplete="one-time-code"
+                value={value || ""}
+                onChange={handleChange}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer pointer-events-auto text-transparent"
+                style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    opacity: 0,
+                    zIndex: 20,
+                    cursor: "text",
+                }}
+                autoFocus
+            />
+
+            {/* Visual 6 boxes rendering directly from the single source of truth `value` */}
+            <div className="flex items-center justify-center gap-2 sm:gap-3 pointer-events-none">
+                {[0, 1, 2, 3, 4, 5].map((idx) => {
+                    const char = (value || "")[idx] || "";
+                    // Active slot is the one currently waiting for input
+                    const isCurrentSlot = isFocused && (idx === (value || "").length || (idx === 5 && (value || "").length === 6));
+
+                    return (
+                        <React.Fragment key={idx}>
+                            {idx === 3 && (
+                                <span className="text-blue-300 font-bold text-2xl px-1 select-none">-</span>
+                            )}
+                            <div
+                                style={{
+                                    backgroundColor: "#0f172a",
+                                    color: "#ffffff",
+                                }}
+                                className={`w-11 h-14 sm:w-12 sm:h-14 flex items-center justify-center text-3xl font-extrabold rounded-xl border-2 transition-all shadow-lg select-none ${
+                                    isCurrentSlot
+                                        ? "border-cyan-400 ring-4 ring-cyan-500/40 scale-105"
+                                        : char
+                                        ? "border-blue-400 shadow-blue-500/20"
+                                        : "border-blue-900/60"
+                                }`}
+                            >
+                                {char ? (
+                                    <span className="text-white drop-shadow font-mono">{char}</span>
+                                ) : isCurrentSlot ? (
+                                    <span className="inline-block w-0.5 h-7 bg-cyan-400 animate-pulse rounded" />
+                                ) : (
+                                    <span className="inline-block w-2 h-2 rounded-full bg-blue-900/50" />
+                                )}
+                            </div>
+                        </React.Fragment>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -157,6 +132,8 @@ export function MemberLoginForm() {
     const formOtp = useForm<z.infer<typeof otpSchema>>({
         resolver: zodResolver(otpSchema),
         defaultValues: { otp: "" },
+        mode: "onSubmit",
+        reValidateMode: "onSubmit",
     });
 
     async function onIdentifierSubmit(values: z.infer<typeof formSchema>) {
