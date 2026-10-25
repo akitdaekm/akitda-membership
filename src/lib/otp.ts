@@ -8,6 +8,7 @@ export async function generateAndSaveOtp(identifier: string) {
     const member = await prisma.member.findFirst({
         where: {
             OR: [
+                { id: identifier },
                 { primaryMobile: identifier },
                 { primaryEmail: identifier },
                 { membershipId: identifier },
@@ -59,6 +60,7 @@ export async function verifyAndClearOtp(identifier: string, inputOtp: string) {
     const member = await prisma.member.findFirst({
         where: {
             OR: [
+                { id: identifier },
                 { primaryMobile: identifier },
                 { primaryEmail: identifier },
                 { membershipId: identifier },
