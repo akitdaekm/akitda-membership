@@ -17,6 +17,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             message: result.message,
+            waStatus: result.waStatus,
             emailStatus: result.emailStatus,
             smsStatus: result.smsStatus,
         });

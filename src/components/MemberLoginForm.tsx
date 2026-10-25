@@ -101,7 +101,7 @@ export function MemberLoginForm() {
                 <CardDescription className="text-blue-200">
                     {step === "IDENTIFIER"
                         ? "Enter your registered Mobile, Email, or Membership ID to login."
-                        : `Enter the OTP sent to your registered contact for ${identifier}`
+                        : `Enter the OTP sent to your WhatsApp / mobile for ${identifier}`
                     }
                 </CardDescription>
             </CardHeader>

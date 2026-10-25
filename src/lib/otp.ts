@@ -36,13 +36,17 @@ export async function generateAndSaveOtp(identifier: string) {
         },
     });
 
-    // Dispatch SMS and Email asynchronously
-    const emailResult = await sendOtpEmail(member.primaryEmail, otp, member.companyName);
-    const smsResult = await sendOtpSms(member.primaryMobile, otp);
+    // Dispatch WhatsApp, Email and SMS asynchronously
+    const [waResult, emailResult, smsResult] = await Promise.all([
+        sendOtpWhatsApp(member.primaryMobile, otp, member.companyName),
+        sendOtpEmail(member.primaryEmail, otp, member.companyName),
+        sendOtpSms(member.primaryMobile, otp),
+    ]);
 
     return {
         success: true,
-        message: "OTP sent successfully via SMS and Email.",
+        message: "OTP sent successfully via WhatsApp, Email, and SMS.",
+        waStatus: waResult,
         emailStatus: emailResult,
         smsStatus: smsResult,
     };
@@ -181,6 +185,52 @@ export async function sendOtpSms(mobile: string, otp: string) {
         return { sent: false, reason: "Unsupported SMS Provider" };
     } catch (error) {
         console.error("[SMS OTP Error]:", error);
+        return { sent: false, error: String(error) };
+    }
+}
+
+/**
+ * Send OTP via WhatsApp (Open-WA / Baileys / Cloudflare Tunnel / UltraMsg / Custom API)
+ */
+export async function sendOtpWhatsApp(mobile: string, otp: string, companyName?: string) {
+    const apiUrl = process.env.WHATSAPP_API_URL;
+    const apiKey = process.env.WHATSAPP_API_KEY || "my_secret_key_123";
+
+    if (!apiUrl) {
+        console.warn("[WhatsApp OTP Warning] WHATSAPP_API_URL not configured. WhatsApp dispatch skipped.");
+        return { sent: false, reason: "WHATSAPP_API_URL not configured in environment" };
+    }
+
+    // Standardize 10-digit mobile number for WhatsApp JID
+    let cleanMobile = mobile.replace(/[^0-9]/g, "");
+    if (cleanMobile.length === 10) {
+        cleanMobile = `91${cleanMobile}`;
+    }
+
+    const message = `*AKITDA Verification Code*\n\nHello ${companyName || "Member"},\nYour One-Time Password (OTP) for login verification is:\n\n*${otp}*\n\nThis OTP is valid for 10 minutes. Do not share this code with anyone.\n\n_All Kerala IT Dealers Association (AKITDA)_`;
+
+    try {
+        const trimmedUrl = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
+        // Supports Open-WA standard /api/sendText or custom endpoint
+        const endpoint = trimmedUrl.includes("/api/") ? trimmedUrl : `${trimmedUrl}/api/sendText`;
+
+        const res = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "api_key": apiKey,
+                "X-API-Key": apiKey,
+            },
+            body: JSON.stringify({
+                to: `${cleanMobile}@c.us`,
+                content: message,
+            }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        return { sent: res.ok, data };
+    } catch (error) {
+        console.error("[WhatsApp OTP Error]:", error);
         return { sent: false, error: String(error) };
     }
 }
