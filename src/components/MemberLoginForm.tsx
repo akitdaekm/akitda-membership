@@ -25,7 +25,7 @@ const otpSchema = z.object({
     otp: z.string().length(6, "OTP must be 6 digits"),
 });
 
-// 6-box OTP component: directly renders 6 real inputs, shows typed numbers clearly, and auto-advances
+// 6-box OTP component: Independent state, guaranteed visible digits, auto-advance
 function SixBoxOtpInput({
     value,
     onChange,
@@ -33,45 +33,51 @@ function SixBoxOtpInput({
     value: string;
     onChange: (val: string) => void;
 }) {
+    const [digits, setDigits] = useState<string[]>(() => {
+        const arr = (value || "").slice(0, 6).split("");
+        while (arr.length < 6) arr.push("");
+        return arr;
+    });
+
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-    const currentChars = (value || "").split("").slice(0, 6);
-    while (currentChars.length < 6) currentChars.push("");
-
     useEffect(() => {
-        // Automatically focus the first empty box on display
-        const firstEmpty = currentChars.findIndex((c) => !c);
-        const target = firstEmpty === -1 ? 0 : firstEmpty;
-        inputRefs.current[target]?.focus();
+        // Focus first slot when component mounts
+        inputRefs.current[0]?.focus();
     }, []);
 
-    const handleChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-        const raw = e.target.value.replace(/[^0-9]/g, "");
-        if (!raw) {
-            const newChars = [...currentChars];
-            newChars[index] = "";
-            onChange(newChars.join(""));
-            return;
+    useEffect(() => {
+        if (!value) {
+            setDigits(["", "", "", "", "", ""]);
+        } else if (value !== digits.join("")) {
+            const arr = value.slice(0, 6).split("");
+            while (arr.length < 6) arr.push("");
+            setDigits(arr);
         }
+    }, [value]);
 
-        const digit = raw.slice(-1);
-        const newChars = [...currentChars];
-        newChars[index] = digit;
-        const result = newChars.join("");
-        onChange(result);
+    const handleInput = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value.replace(/[^0-9]/g, "");
+        const char = val ? val.slice(-1) : "";
 
-        // Auto move to next input box
-        if (digit && index < 5) {
+        const nextDigits = [...digits];
+        nextDigits[index] = char;
+        setDigits(nextDigits);
+        onChange(nextDigits.join(""));
+
+        // If a number was typed, move to next slot automatically
+        if (char && index < 5) {
             inputRefs.current[index + 1]?.focus();
         }
     };
 
     const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Backspace") {
-            if (!currentChars[index] && index > 0) {
-                const newChars = [...currentChars];
-                newChars[index - 1] = "";
-                onChange(newChars.join(""));
+            if (!digits[index] && index > 0) {
+                const nextDigits = [...digits];
+                nextDigits[index - 1] = "";
+                setDigits(nextDigits);
+                onChange(nextDigits.join(""));
                 inputRefs.current[index - 1]?.focus();
             }
         } else if (e.key === "ArrowLeft" && index > 0) {
@@ -85,9 +91,12 @@ function SixBoxOtpInput({
         e.preventDefault();
         const pasted = e.clipboardData.getData("text").replace(/[^0-9]/g, "").slice(0, 6);
         if (pasted) {
+            const nextDigits = pasted.split("");
+            while (nextDigits.length < 6) nextDigits.push("");
+            setDigits(nextDigits);
             onChange(pasted);
-            const nextIdx = Math.min(pasted.length, 5);
-            inputRefs.current[nextIdx]?.focus();
+            const focusTarget = Math.min(pasted.length, 5);
+            inputRefs.current[focusTarget]?.focus();
         }
     };
 
@@ -96,7 +105,7 @@ function SixBoxOtpInput({
             {[0, 1, 2, 3, 4, 5].map((idx) => (
                 <React.Fragment key={idx}>
                     {idx === 3 && (
-                        <span className="text-blue-300 font-bold text-xl select-none px-0.5">-</span>
+                        <span className="text-blue-300 font-bold text-2xl select-none px-1">-</span>
                     )}
                     <input
                         ref={(el) => { inputRefs.current[idx] = el; }}
@@ -104,11 +113,17 @@ function SixBoxOtpInput({
                         inputMode="numeric"
                         pattern="[0-9]*"
                         maxLength={1}
-                        value={currentChars[idx]}
-                        onChange={(e) => handleChange(idx, e)}
+                        value={digits[idx]}
+                        onChange={(e) => handleInput(idx, e)}
                         onKeyDown={(e) => handleKeyDown(idx, e)}
                         onPaste={handlePaste}
-                        className="w-11 h-14 sm:w-12 sm:h-14 text-center text-2xl font-bold text-white bg-slate-900/90 border-2 border-blue-400/50 rounded-xl focus:border-cyan-400 focus:bg-slate-800 focus:ring-4 focus:ring-cyan-500/30 outline-none transition-all shadow-md select-text"
+                        style={{
+                            color: "#ffffff",
+                            WebkitTextFillColor: "#ffffff",
+                            backgroundColor: "#0f172a",
+                            caretColor: "#38bdf8",
+                        }}
+                        className="w-11 h-14 sm:w-12 sm:h-14 text-center text-3xl font-extrabold border-2 border-blue-400 rounded-xl focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/40 outline-none transition-all shadow-lg select-text"
                     />
                 </React.Fragment>
             ))}
