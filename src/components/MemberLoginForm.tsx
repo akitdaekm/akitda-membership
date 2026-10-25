@@ -21,99 +21,130 @@ const formSchema = z.object({
     identifier: z.string().min(3, "Enter your Mobile Number, Email, or Membership ID"),
 });
 
-const otpSchema = z.object({
-    otp: z.string().length(6, "OTP must be 6 digits"),
-});
-
-// Single overlay OTP component: Guarantees 100% synchronization with form, mobile autofill, and paste
+// 6-box OTP component: Native visible uncontrolled inputs for instant typing feedback & zero lag
 function SixBoxOtpInput({
-    value = "",
-    onChange,
+    onOtpChange,
 }: {
-    value: string;
-    onChange: (val: string) => void;
+    onOtpChange: (val: string) => void;
 }) {
-    const inputRef = useRef<HTMLInputElement>(null);
-    const [isFocused, setIsFocused] = useState(false);
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => {
-        // Automatically focus on mount
-        inputRef.current?.focus();
+        // Automatically focus on the first slot when mounted
+        const timer = setTimeout(() => {
+            inputRefs.current[0]?.focus();
+        }, 100);
+        return () => clearTimeout(timer);
     }, []);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const cleaned = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
-        onChange(cleaned);
+    const emitChange = () => {
+        const full = inputRefs.current.map((el) => el?.value || "").join("");
+        onOtpChange(full);
+    };
+
+    const handleInput = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value.replace(/[^0-9]/g, "");
+        // Keep only the most recently typed digit
+        e.target.value = val ? val.slice(-1) : "";
+
+        emitChange();
+
+        // If a digit was entered, immediately jump to the next input box
+        if (e.target.value && index < 5) {
+            inputRefs.current[index + 1]?.focus();
+            inputRefs.current[index + 1]?.select();
+        }
+    };
+
+    const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Backspace") {
+            if (!e.currentTarget.value && index > 0) {
+                const prev = inputRefs.current[index - 1];
+                if (prev) {
+                    prev.value = "";
+                    prev.focus();
+                    emitChange();
+                }
+            }
+        } else if (e.key === "ArrowLeft" && index > 0) {
+            inputRefs.current[index - 1]?.focus();
+        } else if (e.key === "ArrowRight" && index < 5) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+        e.preventDefault();
+        const text = e.clipboardData.getData("text").replace(/[^0-9]/g, "").slice(0, 6);
+        if (!text) return;
+
+        for (let i = 0; i < 6; i++) {
+            if (inputRefs.current[i]) {
+                inputRefs.current[i]!.value = text[i] || "";
+            }
+        }
+        emitChange();
+        const focusIndex = Math.min(text.length, 5);
+        inputRefs.current[focusIndex]?.focus();
+    };
+
+    const handlePasteClick = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            const digits = text.replace(/[^0-9]/g, "").slice(0, 6);
+            if (!digits) return;
+            for (let i = 0; i < 6; i++) {
+                if (inputRefs.current[i]) {
+                    inputRefs.current[i]!.value = digits[i] || "";
+                }
+            }
+            emitChange();
+            const focusIndex = Math.min(digits.length, 5);
+            inputRefs.current[focusIndex]?.focus();
+        } catch {
+            // Clipboard access not granted or not supported on this browser
+        }
     };
 
     return (
-        <div
-            className="relative py-2 flex items-center justify-center cursor-text"
-            onClick={() => inputRef.current?.focus()}
-        >
-            {/* The single true input: perfectly captures typing, mobile keyboard, clipboard paste, autofill */}
-            <input
-                ref={inputRef}
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                autoComplete="one-time-code"
-                value={value || ""}
-                onChange={handleChange}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer pointer-events-auto text-transparent"
-                style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    opacity: 0,
-                    zIndex: 20,
-                    cursor: "text",
-                }}
-                autoFocus
-            />
-
-            {/* Visual 6 boxes rendering directly from the single source of truth `value` */}
-            <div className="flex items-center justify-center gap-2 sm:gap-3 pointer-events-none">
-                {[0, 1, 2, 3, 4, 5].map((idx) => {
-                    const char = (value || "")[idx] || "";
-                    // Active slot is the one currently waiting for input
-                    const isCurrentSlot = isFocused && (idx === (value || "").length || (idx === 5 && (value || "").length === 6));
-
-                    return (
-                        <React.Fragment key={idx}>
-                            {idx === 3 && (
-                                <span className="text-blue-300 font-bold text-2xl px-1 select-none">-</span>
-                            )}
-                            <div
-                                style={{
-                                    backgroundColor: "#0f172a",
-                                    color: "#ffffff",
-                                }}
-                                className={`w-11 h-14 sm:w-12 sm:h-14 flex items-center justify-center text-3xl font-extrabold rounded-xl border-2 transition-all shadow-lg select-none ${
-                                    isCurrentSlot
-                                        ? "border-cyan-400 ring-4 ring-cyan-500/40 scale-105"
-                                        : char
-                                        ? "border-blue-400 shadow-blue-500/20"
-                                        : "border-blue-900/60"
-                                }`}
-                            >
-                                {char ? (
-                                    <span className="text-white drop-shadow font-mono">{char}</span>
-                                ) : isCurrentSlot ? (
-                                    <span className="inline-block w-0.5 h-7 bg-cyan-400 animate-pulse rounded" />
-                                ) : (
-                                    <span className="inline-block w-2 h-2 rounded-full bg-blue-900/50" />
-                                )}
-                            </div>
-                        </React.Fragment>
-                    );
-                })}
+        <div className="flex flex-col items-center gap-3 py-2">
+            <div className="flex items-center justify-center gap-2 sm:gap-3">
+                {[0, 1, 2, 3, 4, 5].map((idx) => (
+                    <React.Fragment key={idx}>
+                        {idx === 3 && (
+                            <span className="text-blue-300 font-bold text-2xl select-none px-1">-</span>
+                        )}
+                        <input
+                            key={idx}
+                            ref={(el) => { inputRefs.current[idx] = el; }}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={1}
+                            defaultValue=""
+                            onChange={(e) => handleInput(idx, e)}
+                            onKeyDown={(e) => handleKeyDown(idx, e)}
+                            onPaste={handlePaste}
+                            onFocus={(e) => e.target.select()}
+                            style={{
+                                color: "#ffffff",
+                                WebkitTextFillColor: "#ffffff",
+                                backgroundColor: "#0f172a",
+                                caretColor: "#38bdf8",
+                            }}
+                            className="w-11 h-14 sm:w-12 sm:h-14 text-center text-3xl font-extrabold border-2 border-blue-400 rounded-xl focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/40 outline-none transition-all shadow-lg text-white"
+                        />
+                    </React.Fragment>
+                ))}
             </div>
+
+            <button
+                type="button"
+                onClick={handlePasteClick}
+                className="text-xs text-blue-300 hover:text-cyan-300 transition-colors flex items-center gap-1.5 pt-1 cursor-pointer underline underline-offset-4"
+            >
+                📋 Paste OTP from Clipboard
+            </button>
         </div>
     );
 }
@@ -123,17 +154,12 @@ export function MemberLoginForm() {
     const [step, setStep] = useState<"IDENTIFIER" | "OTP">("IDENTIFIER");
     const [identifier, setIdentifier] = useState("");
     const [loading, setLoading] = useState(false);
+    const [otpCode, setOtpCode] = useState("");
+    const [otpError, setOtpError] = useState("");
 
     const formIdent = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: { identifier: "" },
-    });
-
-    const formOtp = useForm<z.infer<typeof otpSchema>>({
-        resolver: zodResolver(otpSchema),
-        defaultValues: { otp: "" },
-        mode: "onSubmit",
-        reValidateMode: "onSubmit",
     });
 
     async function onIdentifierSubmit(values: z.infer<typeof formSchema>) {
@@ -148,6 +174,8 @@ export function MemberLoginForm() {
             if (res.ok) {
                 setIdentifier(values.identifier);
                 setStep("OTP");
+                setOtpCode("");
+                setOtpError("");
             } else {
                 const data = await res.json();
                 formIdent.setError("identifier", { message: data.message || "User not found" });
@@ -159,24 +187,33 @@ export function MemberLoginForm() {
         }
     }
 
-    async function onOtpSubmit(values: z.infer<typeof otpSchema>) {
+    async function handleOtpVerify(e?: React.FormEvent) {
+        if (e) e.preventDefault();
+
+        if (!otpCode || otpCode.length !== 6) {
+            setOtpError("OTP must be 6 digits");
+            return;
+        }
+
+        setOtpError("");
         setLoading(true);
         try {
             const res = await fetch("/api/auth/otp/verify", {
                 method: "POST",
-                body: JSON.stringify({ identifier, otp: values.otp }),
+                body: JSON.stringify({ identifier, otp: otpCode }),
                 headers: { "Content-Type": "application/json" },
             });
 
             if (res.ok) {
                 router.push("/dashboard");
             } else {
-                formOtp.setError("otp", { message: "Invalid OTP" });
+                const data = await res.json().catch(() => ({}));
+                setOtpError(data.message || "Invalid OTP. Please check and try again.");
             }
         } catch (error: unknown) {
             console.error("Login Error:", error);
             const message = error instanceof Error ? error.message : "Login failed. Please try again.";
-            formOtp.setError("otp", { message });
+            setOtpError(message);
         } finally {
             setLoading(false);
         }
@@ -216,37 +253,45 @@ export function MemberLoginForm() {
                         </form>
                     </Form>
                 ) : (
-                    <Form {...formOtp}>
-                        <form onSubmit={formOtp.handleSubmit(onOtpSubmit)} className="space-y-6">
-                            <FormField
-                                control={formOtp.control}
-                                name="otp"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-center block">One Time Password</FormLabel>
-                                        <FormControl>
-                                            <SixBoxOtpInput
-                                                value={field.value}
-                                                onChange={(val) => {
-                                                    field.onChange(val);
-                                                    if (val.length === 6) {
-                                                        formOtp.clearErrors("otp");
-                                                    }
-                                                }}
-                                            />
-                                        </FormControl>
-                                        <FormMessage className="text-center" />
-                                    </FormItem>
-                                )}
+                    <form onSubmit={handleOtpVerify} className="space-y-6">
+                        <div>
+                            <label className="text-center block text-sm font-medium text-white mb-2">
+                                One Time Password
+                            </label>
+                            <SixBoxOtpInput
+                                onOtpChange={(val) => {
+                                    setOtpCode(val);
+                                    if (val.length === 6) {
+                                        setOtpError("");
+                                    }
+                                }}
                             />
-                            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border border-blue-500 transition-all font-semibold tracking-wide" disabled={loading}>
-                                {loading ? "Verifying..." : "Verify & Login"}
-                            </Button>
-                            <Button variant="ghost" className="w-full hover:bg-white/10 hover:text-white" onClick={() => setStep("IDENTIFIER")} type="button">
-                                Back
-                            </Button>
-                        </form>
-                    </Form>
+                            {otpError && (
+                                <p className="text-center text-sm font-medium text-red-400 mt-2">
+                                    {otpError}
+                                </p>
+                            )}
+                        </div>
+                        <Button
+                            type="submit"
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border border-blue-500 transition-all font-semibold tracking-wide cursor-pointer"
+                            disabled={loading}
+                        >
+                            {loading ? "Verifying..." : "Verify & Login"}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            className="w-full hover:bg-white/10 hover:text-white cursor-pointer"
+                            onClick={() => {
+                                setStep("IDENTIFIER");
+                                setOtpError("");
+                                setOtpCode("");
+                            }}
+                            type="button"
+                        >
+                            Back
+                        </Button>
+                    </form>
                 )}
             </CardContent>
         </Card>
