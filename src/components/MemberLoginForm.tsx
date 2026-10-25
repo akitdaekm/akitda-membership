@@ -138,22 +138,21 @@ export function MemberLoginForm() {
                                         <FormLabel>One Time Password</FormLabel>
                                         <FormControl>
                                             <div className="flex justify-center">
-                                                <InputOTP
+                                                <Input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    autoComplete="one-time-code"
+                                                    pattern="[0-9]*"
                                                     maxLength={6}
+                                                    placeholder="• • • • • •"
+                                                    autoFocus
+                                                    className="text-center text-3xl font-mono tracking-[0.35em] h-16 w-full max-w-xs bg-white/10 border-2 border-blue-400/50 focus:border-blue-400 text-white placeholder:text-blue-200/30 rounded-xl shadow-inner"
                                                     {...field}
-                                                >
-                                                    <InputOTPGroup className="gap-2">
-                                                        <InputOTPSlot index={0} className="rounded-md border-blue-500/30 bg-white/5 text-blue-100" />
-                                                        <InputOTPSlot index={1} className="rounded-md border-blue-500/30 bg-white/5 text-blue-100" />
-                                                        <InputOTPSlot index={2} className="rounded-md border-blue-500/30 bg-white/5 text-blue-100" />
-                                                    </InputOTPGroup>
-                                                    <InputOTPSeparator />
-                                                    <InputOTPGroup className="gap-2">
-                                                        <InputOTPSlot index={3} className="rounded-md border-blue-500/30 bg-white/5 text-blue-100" />
-                                                        <InputOTPSlot index={4} className="rounded-md border-blue-500/30 bg-white/5 text-blue-100" />
-                                                        <InputOTPSlot index={5} className="rounded-md border-blue-500/30 bg-white/5 text-blue-100" />
-                                                    </InputOTPGroup>
-                                                </InputOTP>
+                                                    onChange={(e) => {
+                                                        const clean = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+                                                        field.onChange(clean);
+                                                    }}
+                                                />
                                             </div>
                                         </FormControl>
                                         <FormMessage />
