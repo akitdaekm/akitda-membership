@@ -202,7 +202,15 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ error: "Endpoint not found" }));
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
     console.log(`\n>>> AKITDA WhatsApp Server running on http://localhost:${PORT} <<<`);
+    try {
+        const { startTunnel } = await import("untun");
+        const tunnel = await startTunnel({ port: PORT });
+        const tunnelUrl = await tunnel.getURL();
+        console.log(`>>> PUBLIC INTERNET TUNNEL: ${tunnelUrl} <<<\n`);
+    } catch (e) {
+        console.log("Note: Local tunnel auto-start skipped:", e.message);
+    }
     startWhatsApp();
 });
