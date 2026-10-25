@@ -25,34 +25,34 @@ const otpSchema = z.object({
     otp: z.string().length(6, "OTP must be 6 digits"),
 });
 
-// 6-box OTP component: Independent state, guaranteed visible digits, auto-advance
+// 6-box OTP component: Synchronous ref tracking to guarantee 100% full 6-digit sync with form
 function SixBoxOtpInput({
     value,
     onChange,
+    onComplete,
 }: {
     value: string;
     onChange: (val: string) => void;
+    onComplete?: (code: string) => void;
 }) {
-    const [digits, setDigits] = useState<string[]>(() => {
-        const arr = (value || "").slice(0, 6).split("");
-        while (arr.length < 6) arr.push("");
-        return arr;
-    });
-
+    // Keep a synchronous ref array to eliminate any state-closure race conditions
+    const digitsRef = useRef<string[]>(["", "", "", "", "", ""]);
+    const [, forceUpdate] = useState(0);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => {
-        // Focus first slot when component mounts
         inputRefs.current[0]?.focus();
     }, []);
 
     useEffect(() => {
         if (!value) {
-            setDigits(["", "", "", "", "", ""]);
-        } else if (value !== digits.join("")) {
+            digitsRef.current = ["", "", "", "", "", ""];
+            forceUpdate(n => n + 1);
+        } else if (value !== digitsRef.current.join("")) {
             const arr = value.slice(0, 6).split("");
             while (arr.length < 6) arr.push("");
-            setDigits(arr);
+            digitsRef.current = arr;
+            forceUpdate(n => n + 1);
         }
     }, [value]);
 
@@ -60,12 +60,20 @@ function SixBoxOtpInput({
         const val = e.target.value.replace(/[^0-9]/g, "");
         const char = val ? val.slice(-1) : "";
 
-        const nextDigits = [...digits];
-        nextDigits[index] = char;
-        setDigits(nextDigits);
-        onChange(nextDigits.join(""));
+        digitsRef.current[index] = char;
+        const fullString = digitsRef.current.join("");
 
-        // If a number was typed, move to next slot automatically
+        // Immediate synchronous state update
+        forceUpdate(n => n + 1);
+
+        // Update react-hook-form
+        onChange(fullString);
+
+        if (fullString.length === 6 && onComplete) {
+            onComplete(fullString);
+        }
+
+        // Auto move to next input box
         if (char && index < 5) {
             inputRefs.current[index + 1]?.focus();
         }
@@ -73,11 +81,10 @@ function SixBoxOtpInput({
 
     const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Backspace") {
-            if (!digits[index] && index > 0) {
-                const nextDigits = [...digits];
-                nextDigits[index - 1] = "";
-                setDigits(nextDigits);
-                onChange(nextDigits.join(""));
+            if (!digitsRef.current[index] && index > 0) {
+                digitsRef.current[index - 1] = "";
+                forceUpdate(n => n + 1);
+                onChange(digitsRef.current.join(""));
                 inputRefs.current[index - 1]?.focus();
             }
         } else if (e.key === "ArrowLeft" && index > 0) {
@@ -91,10 +98,15 @@ function SixBoxOtpInput({
         e.preventDefault();
         const pasted = e.clipboardData.getData("text").replace(/[^0-9]/g, "").slice(0, 6);
         if (pasted) {
-            const nextDigits = pasted.split("");
-            while (nextDigits.length < 6) nextDigits.push("");
-            setDigits(nextDigits);
-            onChange(pasted);
+            const arr = pasted.split("");
+            while (arr.length < 6) arr.push("");
+            digitsRef.current = arr;
+            forceUpdate(n => n + 1);
+            const fullString = digitsRef.current.join("");
+            onChange(fullString);
+            if (fullString.length === 6 && onComplete) {
+                onComplete(fullString);
+            }
             const focusTarget = Math.min(pasted.length, 5);
             inputRefs.current[focusTarget]?.focus();
         }
@@ -113,7 +125,7 @@ function SixBoxOtpInput({
                         inputMode="numeric"
                         pattern="[0-9]*"
                         maxLength={1}
-                        value={digits[idx]}
+                        value={digitsRef.current[idx] || ""}
                         onChange={(e) => handleInput(idx, e)}
                         onKeyDown={(e) => handleKeyDown(idx, e)}
                         onPaste={handlePaste}
@@ -238,7 +250,12 @@ export function MemberLoginForm() {
                                         <FormControl>
                                             <SixBoxOtpInput
                                                 value={field.value}
-                                                onChange={field.onChange}
+                                                onChange={(val) => {
+                                                    field.onChange(val);
+                                                    if (val.length === 6) {
+                                                        formOtp.clearErrors("otp");
+                                                    }
+                                                }}
                                             />
                                         </FormControl>
                                         <FormMessage className="text-center" />
