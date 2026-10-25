@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export function AnimatedHero() {
     return (
-        <section className="relative text-white overflow-hidden pt-4 pb-12 lg:pt-6 lg:pb-16 bg-[#0B1120]">
+        <section className="relative text-white overflow-hidden pt-4 pb-4 lg:pt-6 lg:pb-6 bg-[#0B1120]">
             {/* Dark Gradient Overlay */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-[#0B1120] to-[#0B1120] z-0" />
 
@@ -115,7 +115,7 @@ export function AnimatedHero() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 1.0 }}
-                    className="flex flex-col sm:flex-row gap-6 mb-12"
+                    className="flex flex-col sm:flex-row gap-6 mb-2"
                 >
                     <Link href="/register" className="group relative">
                         <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-200"></div>

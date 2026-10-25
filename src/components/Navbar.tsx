@@ -17,6 +17,10 @@ export function Navbar() {
                         Home
                         <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-400 group-hover:w-full transition-all duration-300 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.8)]"></span>
                     </Link>
+                    <Link href="/#programs" className="relative text-sm font-semibold tracking-wide text-white/90 hover:text-white group transition-all duration-300">
+                        Programs
+                        <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300 rounded-full shadow-[0_0_8px_rgba(251,146,60,0.8)]"></span>
+                    </Link>
                     <Link href="/#about" className="relative text-sm font-semibold tracking-wide text-white/90 hover:text-white group transition-all duration-300">
                         About
                         <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300 rounded-full shadow-[0_0_8px_rgba(251,146,60,0.8)]"></span>
@@ -60,6 +64,9 @@ export function Navbar() {
                     <div className="lg:hidden bg-slate-900 border-t border-white/10 absolute top-16 left-0 right-0 p-4 flex flex-col gap-4 shadow-xl animate-in slide-in-from-top-5">
                         <Link href="/" className="text-sm font-semibold tracking-wide text-white/90 hover:text-white hover:bg-blue-500/10 border-l-2 border-transparent hover:border-blue-400 transition-all duration-200 p-2 pl-4 rounded-r" onClick={() => setIsOpen(false)}>
                             Home
+                        </Link>
+                        <Link href="/#programs" className="text-sm font-semibold tracking-wide text-white/90 hover:text-white hover:bg-orange-500/10 border-l-2 border-transparent hover:border-orange-400 transition-all duration-200 p-2 pl-4 rounded-r" onClick={() => setIsOpen(false)}>
+                            Programs
                         </Link>
                         <Link href="/#about" className="text-sm font-semibold tracking-wide text-white/90 hover:text-white hover:bg-orange-500/10 border-l-2 border-transparent hover:border-orange-400 transition-all duration-200 p-2 pl-4 rounded-r" onClick={() => setIsOpen(false)}>
                             About

@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { AnimatedHero } from "@/components/AnimatedHero";
+import { ProgramsBoard } from "@/components/ProgramsBoard";
 import { CommitteeSection } from "@/components/CommitteeSection";
 import { AboutSlideshow } from "@/components/AboutSlideshow";
 import { Button } from "@/components/ui/button";
@@ -8,11 +9,13 @@ import Link from "next/link";
 import { ArrowRight, ShieldCheck, Users, HandHeart, Calendar, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
+import { getPrograms, DEFAULT_PROGRAMS, ProgramItem } from "@/lib/programs";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   let officeBearers: any[] = [];
+  let programs: ProgramItem[] = DEFAULT_PROGRAMS;
   try {
     officeBearers = await prisma.officeBearer.findMany({
       orderBy: [
@@ -24,6 +27,12 @@ export default async function Home() {
     console.error("Failed to load office bearers on home page:", err);
   }
 
+  try {
+    programs = await getPrograms();
+  } catch (err) {
+    console.error("Failed to load programs on home page:", err);
+  }
+
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <Navbar />
@@ -31,8 +40,11 @@ export default async function Home() {
       {/* Hero Section */}
       <AnimatedHero />
 
+      {/* Association Upcoming Programs / News Board (One by One) */}
+      <ProgramsBoard programs={programs} />
+
       {/* About Section */}
-      <section id="about" className="py-24 bg-orange-600">
+      <section id="about" className="py-12 md:py-16 bg-orange-600">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div className="relative">

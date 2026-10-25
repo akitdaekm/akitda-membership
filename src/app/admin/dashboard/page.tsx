@@ -78,18 +78,35 @@ type GalleryItem = {
     createdAt: string;
 };
 
+type ProgramItem = {
+    id: string;
+    title: string;
+    date: string;
+    venue: string;
+    category: string;
+    description: string;
+    posterUrl?: string | null;
+    order: number;
+    createdAt: string;
+};
+
 export default function AdminDashboard() {
     const router = useRouter();
     const [members, setMembers] = useState<Member[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [officeBearers, setOfficeBearers] = useState<OfficeBearer[]>([]);
     const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+    const [programs, setPrograms] = useState<ProgramItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentAdmin, setCurrentAdmin] = useState<{ id: string, email: string, role: string } | null>(null);
 
     // Dialog States for Office Bearers
     const [isOBDialogOpen, setIsOBDialogOpen] = useState(false);
     const [editingBearer, setEditingBearer] = useState<OfficeBearer | null>(null);
+
+    // Dialog States for Upcoming Programs Board
+    const [isProgramDialogOpen, setIsProgramDialogOpen] = useState(false);
+    const [editingProgram, setEditingProgram] = useState<ProgramItem | null>(null);
 
     // Settings
     const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
@@ -132,6 +149,7 @@ export default function AdminDashboard() {
 
             // Fetch Office Bearers
             fetchOfficeBearers();
+            fetchPrograms();
             fetchGalleryItems();
             fetchSignatures();
         } catch (e) {
@@ -200,6 +218,18 @@ export default function AdminDashboard() {
             if (res.ok) {
                 const data = await res.json();
                 setOfficeBearers(data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function fetchPrograms() {
+        try {
+            const res = await fetch("/api/admin/programs");
+            if (res.ok) {
+                const data = await res.json();
+                setPrograms(Array.isArray(data) ? data : []);
             }
         } catch (e) {
             console.error(e);
@@ -524,6 +554,47 @@ export default function AdminDashboard() {
         }
     }
 
+    // --- Upcoming Programs Board Actions ---
+
+    async function handleProgramSubmit(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+
+        const url = editingProgram
+            ? `/api/admin/programs/${editingProgram.id}`
+            : "/api/admin/programs";
+        const method = editingProgram ? "PUT" : "POST";
+
+        try {
+            const res = await fetch(url, {
+                method,
+                body: formData,
+            });
+
+            if (res.ok) {
+                fetchPrograms();
+                setIsProgramDialogOpen(false);
+                setEditingProgram(null);
+            } else {
+                const err = await res.json();
+                alert(err.message || "Failed to save program.");
+            }
+        } catch (e) {
+            console.error("Error saving program:", e);
+        }
+    }
+
+    async function deleteProgram(id: string) {
+        if (!confirm("Are you sure you want to delete this program from the board?")) return;
+        try {
+            const res = await fetch(`/api/admin/programs/${id}`, { method: "DELETE" });
+            if (res.ok) fetchPrograms();
+            else alert("Failed to delete program.");
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
     const canApprove = (role: string | undefined, type: "PRESIDENT" | "SECRETARY" | "TREASURER") => {
         if (!role) return false;
         if (role === "SUPER_ADMIN") return true;
@@ -626,17 +697,23 @@ export default function AdminDashboard() {
             <main className="container mx-auto px-6 py-8">
                 <div className="mb-8">
                     <h2 className="text-3xl font-bold text-white tracking-tight">Dashboard Overview</h2>
-                    <p className="text-slate-400 mt-1">Manage members, office bearers, and gallery content.</p>
+                    <p className="text-slate-400 mt-1">Manage members, upcoming programs board, office bearers, and gallery content.</p>
                 </div>
 
                 <Tabs defaultValue="members" className="space-y-8">
-                    <div className="bg-slate-900 p-1 rounded-xl shadow-sm border border-slate-800 inline-flex">
-                        <TabsList className="h-auto p-0 bg-transparent flex gap-1">
+                    <div className="bg-slate-900 p-1 rounded-xl shadow-sm border border-slate-800 inline-flex flex-wrap">
+                        <TabsList className="h-auto p-0 bg-transparent flex flex-wrap gap-1">
                             <TabsTrigger
                                 value="members"
                                 className="px-6 py-2.5 rounded-lg data-[state=active]:bg-slate-800 data-[state=active]:text-blue-400 data-[state=active]:shadow-none font-medium text-slate-400 hover:text-slate-200"
                             >
                                 Members
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="programs"
+                                className="px-6 py-2.5 rounded-lg data-[state=active]:bg-slate-800 data-[state=active]:text-orange-400 data-[state=active]:shadow-none font-medium text-slate-400 hover:text-slate-200"
+                            >
+                                Programs Board
                             </TabsTrigger>
                             {currentAdmin?.role === "SUPER_ADMIN" && (
                                 <TabsTrigger
@@ -895,6 +972,205 @@ export default function AdminDashboard() {
                                 </Table>
                             </CardContent>
                         </Card>
+                    </TabsContent>
+
+                    {/* --- UPCOMING PROGRAMS / NEWS BOARD TAB --- */}
+                    <TabsContent value="programs" className="space-y-4">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-200">Upcoming Programs &amp; News Board</h2>
+                                <p className="text-sm text-slate-400">
+                                    Items added here rotate one by one on the main page&apos;s Upcoming Programs Board.
+                                </p>
+                            </div>
+                            <Dialog
+                                open={isProgramDialogOpen}
+                                onOpenChange={(open) => {
+                                    setIsProgramDialogOpen(open);
+                                    if (!open) setEditingProgram(null);
+                                }}
+                            >
+                                <DialogTrigger asChild>
+                                    <Button
+                                        className="bg-orange-600 hover:bg-orange-700 text-white"
+                                        onClick={() => setEditingProgram(null)}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" /> Add Program / News
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent
+                                    key={editingProgram ? editingProgram.id : "new-program"}
+                                    className="bg-slate-900 border-slate-800 text-slate-200 max-h-[90vh] overflow-y-auto"
+                                >
+                                    <DialogHeader>
+                                        <DialogTitle className="text-white">
+                                            {editingProgram ? "Edit Program / Announcement" : "Add New Program / Announcement"}
+                                        </DialogTitle>
+                                    </DialogHeader>
+                                    <form onSubmit={handleProgramSubmit} className="space-y-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="prog-title">Program Title *</Label>
+                                            <Input
+                                                id="prog-title"
+                                                name="title"
+                                                defaultValue={editingProgram?.title}
+                                                required
+                                                placeholder="e.g. AKITDA District Annual General Body & Tech Meet"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="prog-category">Category / Badge</Label>
+                                                <Select
+                                                    name="category"
+                                                    defaultValue={editingProgram?.category || "Upcoming Program"}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select Category" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Upcoming Program">Upcoming Program</SelectItem>
+                                                        <SelectItem value="Official Announcement">Official Announcement</SelectItem>
+                                                        <SelectItem value="Workshop & Training">Workshop &amp; Training</SelectItem>
+                                                        <SelectItem value="Exhibition & Expo">Exhibition &amp; Expo</SelectItem>
+                                                        <SelectItem value="General Body Meet">General Body Meet</SelectItem>
+                                                        <SelectItem value="Welfare Initiative">Welfare Initiative</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="prog-order">Display Order (1 = First)</Label>
+                                                <Input
+                                                    id="prog-order"
+                                                    name="order"
+                                                    type="number"
+                                                    defaultValue={editingProgram?.order || programs.length + 1}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="prog-date">Date &amp; Time</Label>
+                                                <Input
+                                                    id="prog-date"
+                                                    name="date"
+                                                    defaultValue={editingProgram?.date}
+                                                    placeholder="e.g. Nov 25, 2026 • 10:00 AM"
+                                                />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="prog-venue">Venue / Location</Label>
+                                                <Input
+                                                    id="prog-venue"
+                                                    name="venue"
+                                                    defaultValue={editingProgram?.venue}
+                                                    placeholder="e.g. IMA House, Kaloor, Kochi"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="prog-description">Description / Details</Label>
+                                            <textarea
+                                                id="prog-description"
+                                                name="description"
+                                                defaultValue={editingProgram?.description}
+                                                rows={3}
+                                                placeholder="Short summary of the program, agenda, or announcement..."
+                                                className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="prog-poster">Poster / Banner Image (Optional)</Label>
+                                            <Input id="prog-poster" name="posterFile" type="file" accept="image/*" />
+                                            {editingProgram?.posterUrl && (
+                                                <p className="text-xs text-slate-400 truncate">
+                                                    Current image: {editingProgram.posterUrl.slice(0, 60)}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white">
+                                            {editingProgram ? "Update Program" : "Add to Programs Board"}
+                                        </Button>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {programs.map((prog) => (
+                                <Card key={prog.id} className="overflow-hidden bg-slate-900 border-slate-800 flex flex-col justify-between">
+                                    <div>
+                                        <div className="aspect-video bg-slate-800 relative overflow-hidden border-b border-slate-800">
+                                            {prog.posterUrl ? (
+                                                /* eslint-disable-next-line @next/next/no-img-element */
+                                                <img
+                                                    src={prog.posterUrl}
+                                                    alt={prog.title}
+                                                    className="object-cover w-full h-full"
+                                                />
+                                            ) : (
+                                                <div className="flex items-center justify-center h-full text-slate-500 text-sm">
+                                                    No Poster Image
+                                                </div>
+                                            )}
+                                            <div className="absolute top-2 left-2">
+                                                <Badge className="bg-orange-600 text-white hover:bg-orange-500">
+                                                    {prog.category}
+                                                </Badge>
+                                            </div>
+                                            <div className="absolute top-2 right-2">
+                                                <Badge variant="secondary" className="bg-slate-900/90 text-slate-200">
+                                                    #{prog.order}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                        <CardContent className="p-4">
+                                            <h3 className="font-bold text-lg text-slate-100 mb-1 line-clamp-2">
+                                                {prog.title}
+                                            </h3>
+                                            <div className="text-xs text-blue-400 font-medium mb-1">
+                                                📅 {prog.date || "TBA"}
+                                            </div>
+                                            <div className="text-xs text-emerald-400 font-medium mb-3">
+                                                📍 {prog.venue || "Ernakulam"}
+                                            </div>
+                                            {prog.description && (
+                                                <p className="text-sm text-slate-400 line-clamp-3">
+                                                    {prog.description}
+                                                </p>
+                                            )}
+                                        </CardContent>
+                                    </div>
+                                    <div className="p-4 pt-0 flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                            onClick={() => {
+                                                setEditingProgram(prog);
+                                                setIsProgramDialogOpen(true);
+                                            }}
+                                        >
+                                            <Pencil className="h-4 w-4 mr-1" /> Edit
+                                        </Button>
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            className="flex-1 bg-red-900/50 text-red-500 hover:bg-red-800 hover:text-white"
+                                            onClick={() => deleteProgram(prog.id)}
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-1" /> Delete
+                                        </Button>
+                                    </div>
+                                </Card>
+                            ))}
+                            {programs.length === 0 && (
+                                <div className="col-span-full text-center py-12 text-slate-500 border-2 border-slate-800 border-dashed rounded-xl">
+                                    No upcoming programs on the board. Click &quot;Add Program / News&quot; to add one.
+                                </div>
+                            )}
+                        </div>
                     </TabsContent>
 
                     {/* --- OFFICE BEARERS TAB --- */}
