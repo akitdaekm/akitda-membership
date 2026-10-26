@@ -23,6 +23,7 @@ import { TaxInvoice } from "@/components/TaxInvoice";
 import { MemberIDCardDocument } from "@/components/IDCard";
 import { useRouter } from "next/navigation";
 import { getFinancialYear } from "@/lib/financial-year";
+import { openBase64File } from "@/lib/utils";
 
 type Member = {
     id: string;
@@ -655,10 +656,16 @@ export default function MemberDashboard() {
                                             </div>
                                             <div className="shrink-0 ml-2">
                                                 {member.gstFile ? (
-                                                    <a href={member.gstFile} target="_blank" rel="noopener noreferrer">
-                                                        <Button size="sm" variant="outline" className="border-slate-600 text-slate-300 hover:text-white h-7 text-xs px-3">View</Button>
-                                                    </a>
-                                                ) : (
+    <div className="flex items-center gap-2">
+      <Button size="sm" variant="outline" onClick={() => openBase64File(member.gstFile!)} className="border-slate-600 text-slate-300 hover:text-white h-7 text-xs px-2.5 cursor-pointer">View</Button>
+      <Button size="sm" variant="ghost" className="relative h-7 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 border border-blue-500/30 cursor-pointer px-2.5" disabled={uploadingDoc}>
+        <label className="absolute inset-0 flex items-center justify-center cursor-pointer">
+          <span>{uploadingDoc ? "..." : "Change"}</span>
+          <input type="file" className="hidden" accept=".pdf,image/*" onChange={(e) => handleFileUpload(e, "gst")} disabled={uploadingDoc} />
+        </label>
+      </Button>
+    </div>
+  ) : (
                                                     <Button size="sm" variant="secondary" className="relative h-7 text-[10px] sm:text-xs bg-blue-600 hover:bg-blue-700 text-white cursor-pointer px-2 sm:px-3">
                                                         <label className="absolute inset-0 flex items-center justify-center cursor-pointer">
                                                             <span>{uploadingDoc ? "..." : "Upload"}</span>

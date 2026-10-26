@@ -31,6 +31,7 @@ import { PDFDownloadLink } from "@react-pdf/renderer";
 import { MemberIDCardDocument } from "@/components/IDCard";
 import { MembershipCertificate } from "@/components/Certificate";
 import { getFinancialYear } from "@/lib/financial-year";
+import { openBase64File } from "@/lib/utils";
 
 // --- Types ---
 
@@ -804,14 +805,10 @@ export default function AdminDashboard() {
                                                     <TableCell>
                                                          <div className="flex gap-2 mb-2">
                                                              {member.gstFile && (
-                                                                 <a href={member.gstFile} target="_blank" rel="noopener noreferrer">
-                                                                     <Button size="sm" variant="ghost" className="h-6 px-2">GST</Button>
-                                                                 </a>
+                                                                 <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => openBase64File(member.gstFile)}>GST</Button>
                                                              )}
                                                              {member.photoFile && (
-                                                                 <a href={member.photoFile} target="_blank" rel="noopener noreferrer">
-                                                                     <Button size="sm" variant="ghost" className="h-6 px-2">Photo</Button>
-                                                                 </a>
+                                                                 <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => openBase64File(member.photoFile)}>Photo</Button>
                                                              )}
                                                          </div>
                                                          {member.status === "ACTIVE" && isMounted && (
