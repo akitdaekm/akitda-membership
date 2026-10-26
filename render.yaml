@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: akitda-whatsapp-server
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install
+    startCommand: node scripts/wa-server.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: WHATSAPP_API_KEY
+        value: my_secret_key_123
+      - key: DATABASE_URL
+        sync: false

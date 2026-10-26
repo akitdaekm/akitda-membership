@@ -41,6 +41,58 @@ try {
 const PORT = process.env.PORT || 8085;
 const API_KEY = process.env.WHATSAPP_API_KEY || "my_secret_key_123";
 const prisma = new PrismaClient();
+const authPath = path.join(__dirname, "../baileys_auth");
+
+// Sync auth folder with PostgreSQL so Render or server restarts preserve WhatsApp session
+async function restoreAuthFromDb(targetDir) {
+    try {
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+        const records = await prisma.setting.findMany({
+            where: { key: { startsWith: "baileys_auth:" } },
+        });
+        if (records.length > 0) {
+            for (const rec of records) {
+                const filename = rec.key.replace("baileys_auth:", "");
+                const filePath = path.join(targetDir, filename);
+                fs.writeFileSync(filePath, rec.value, "utf-8");
+            }
+            console.log(`[DB Auth Restore] Restored ${records.length} session files from database.`);
+        }
+    } catch (e) {
+        console.warn("[DB Auth Restore Warning]:", e.message);
+    }
+}
+
+async function backupAuthToDb(sourceDir) {
+    try {
+        if (!fs.existsSync(sourceDir)) return;
+        const files = fs.readdirSync(sourceDir);
+        for (const file of files) {
+            if (file.endsWith(".json")) {
+                const content = fs.readFileSync(path.join(sourceDir, file), "utf-8");
+                await prisma.setting.upsert({
+                    where: { key: `baileys_auth:${file}` },
+                    update: { value: content },
+                    create: { key: `baileys_auth:${file}`, value: content },
+                });
+            }
+        }
+        console.log(`[DB Auth Backup] Synced session files to database.`);
+    } catch (e) {
+        console.warn("[DB Auth Backup Warning]:", e.message);
+    }
+}
+
+async function clearAuthFromDb() {
+    try {
+        await prisma.setting.deleteMany({
+            where: { key: { startsWith: "baileys_auth:" } },
+        });
+        console.log("[DB Auth] Cleared session files from database.");
+    } catch (e) {
+        console.warn("[DB Auth Clear Warning]:", e.message);
+    }
+}
 
 let sock = null;
 let latestQR = null;
@@ -60,7 +112,10 @@ async function startWhatsApp() {
         browser: ["AKITDA Portal", "Chrome", "1.0.0"],
     });
 
-    sock.ev.on("creds.update", saveCreds);
+    sock.ev.on("creds.update", async () => {
+        await saveCreds();
+        backupAuthToDb(authPath).catch(() => {});
+    });
 
     sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect, qr } = update;
@@ -84,6 +139,7 @@ async function startWhatsApp() {
                 setTimeout(startWhatsApp, 3000);
             } else {
                 console.log("Logged out. Please delete 'baileys_auth' folder and restart to rescan.");
+                clearAuthFromDb().catch(() => {});
             }
         } else if (connection === "open") {
             isConnected = true;
@@ -93,6 +149,7 @@ async function startWhatsApp() {
             console.log(`   WHATSAPP CONNECTED SUCCESSFULLY! [${userJid}]`);
             console.log(`   HTTP API ready at: http://localhost:${PORT}`);
             console.log("=======================================================\n");
+            backupAuthToDb(authPath).catch(() => {});
         }
     });
 }
@@ -255,16 +312,27 @@ async function saveTunnelUrlToDb(url) {
 
 server.listen(PORT, async () => {
     console.log(`\n=======================================================`);
-    console.log(`>>> AKITDA WhatsApp Server running on http://localhost:${PORT} <<<`);
+    console.log(`>>> AKITDA WhatsApp Server running on port ${PORT} <<<`);
     console.log(`=======================================================\n`);
-    try {
-        const { startTunnel } = await import("untun");
-        const tunnel = await startTunnel({ port: PORT });
-        const tunnelUrl = await tunnel.getURL();
-        console.log(`>>> PUBLIC INTERNET TUNNEL: ${tunnelUrl} <<<\n`);
-        await saveTunnelUrlToDb(tunnelUrl);
-    } catch (e) {
-        console.log("Note: Local tunnel auto-start skipped:", e.message);
+
+    await restoreAuthFromDb(authPath);
+
+    // Check if running on Render (RENDER_EXTERNAL_URL) or custom public host
+    const publicUrl = process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_URL;
+    if (publicUrl) {
+        console.log(`>>> RUNNING IN CLOUD (Render): ${publicUrl} <<<\n`);
+        await saveTunnelUrlToDb(publicUrl);
+    } else {
+        try {
+            const { startTunnel } = await import("untun");
+            const tunnel = await startTunnel({ port: PORT });
+            const tunnelUrl = await tunnel.getURL();
+            console.log(`>>> PUBLIC INTERNET TUNNEL: ${tunnelUrl} <<<\n`);
+            await saveTunnelUrlToDb(tunnelUrl);
+        } catch (e) {
+            console.log("Note: Local tunnel auto-start skipped:", e.message);
+        }
     }
+
     startWhatsApp();
 });
