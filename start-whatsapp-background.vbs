@@ -2,4 +2,4 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 Set WshShell = CreateObject("WScript.Shell")
 WshShell.CurrentDirectory = scriptDir
-WshShell.Run "node scripts/wa-server.mjs", 0, False
+WshShell.Run "cmd /c node scripts\wa-server.mjs", 0, False
