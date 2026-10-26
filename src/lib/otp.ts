@@ -192,55 +192,135 @@ export async function sendOtpSms(mobile: string, otp: string) {
 }
 
 /**
- * Send OTP via WhatsApp (Open-WA / Baileys / Cloudflare Tunnel / UltraMsg / Custom API)
+ * Send OTP via WhatsApp (Fast2SMS / MSG91 / UltraMsg / Baileys Cloudflare Tunnel)
  */
 export async function sendOtpWhatsApp(mobile: string, otp: string, companyName?: string) {
-    let apiUrl = process.env.WHATSAPP_API_URL;
+    const provider = (process.env.WHATSAPP_PROVIDER || "FAST2SMS").toUpperCase();
+    const apiKey = process.env.WHATSAPP_API_KEY || process.env.SMS_API_KEY || "";
 
-    // Check database Setting table for dynamically registered WhatsApp server tunnel
-    // especially if env is missing, localhost, or a temporary trycloudflare domain
-    if (!apiUrl || apiUrl.includes("localhost") || apiUrl.includes("trycloudflare.com")) {
-        try {
-            const dbSetting = await prisma.setting.findUnique({
-                where: { key: "WHATSAPP_API_URL" },
-            });
-            if (dbSetting?.value && dbSetting.value.startsWith("http")) {
-                apiUrl = dbSetting.value;
-            }
-        } catch (dbErr) {
-            console.warn("[WhatsApp OTP] Could not fetch WHATSAPP_API_URL from Setting table:", dbErr);
-        }
-    }
-
-    if (!apiUrl) {
-        apiUrl = "https://britannica-safer-brunswick-health.trycloudflare.com";
-    }
-    const apiKey = process.env.WHATSAPP_API_KEY || "my_secret_key_123";
-
-    if (!apiUrl) {
-        console.warn("[WhatsApp OTP Warning] WHATSAPP_API_URL not configured. WhatsApp dispatch skipped.");
-        return { sent: false, reason: "WHATSAPP_API_URL not configured in environment" };
-    }
-
-    // Standardize 10-digit mobile number for WhatsApp JID
+    // Standardize mobile number
     let cleanMobile = mobile.replace(/[^0-9]/g, "");
     if (cleanMobile.length === 10) {
         cleanMobile = `91${cleanMobile}`;
     }
+    const tenDigitMobile = cleanMobile.length === 12 && cleanMobile.startsWith("91") ? cleanMobile.slice(2) : cleanMobile;
 
     const message = `*AKITDA Verification Code*\n\nHello ${companyName || "Member"},\nYour One-Time Password (OTP) for login verification is:\n\n*${otp}*\n\nThis OTP is valid for 10 minutes. Do not share this code with anyone.\n\n_All Kerala IT Dealers Association (AKITDA)_`;
 
     try {
+        // 1. FAST2SMS WHATSAPP API
+        if (provider === "FAST2SMS" && apiKey && apiKey !== "my_secret_key_123") {
+            console.log(`[WhatsApp OTP] Dispatching via Fast2SMS to ${cleanMobile}...`);
+            const encodedMsg = encodeURIComponent(message);
+            const fast2smsUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${apiKey}&route=whatsapp&message=${encodedMsg}&numbers=${tenDigitMobile}`;
+            
+            const res = await fetch(fast2smsUrl, {
+                method: "GET",
+                signal: AbortSignal.timeout(10000),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data?.return) {
+                return { sent: true, provider: "FAST2SMS", data };
+            }
+            console.warn("[Fast2SMS WhatsApp Warning] Fast2SMS returned error, checking fallback:", data);
+        }
+
+        // 2. MSG91 WHATSAPP OTP API
+        if (provider === "MSG91" && apiKey && apiKey !== "my_secret_key_123") {
+            console.log(`[WhatsApp OTP] Dispatching via MSG91 to ${cleanMobile}...`);
+            const templateId = process.env.MSG91_WA_TEMPLATE_ID || process.env.MSG91_TEMPLATE_ID;
+            
+            let msg91Url = "";
+            let options: RequestInit = { method: "POST", signal: AbortSignal.timeout(10000) };
+
+            if (process.env.MSG91_INTEGRATED_NUMBER) {
+                // MSG91 WhatsApp Outbound Message
+                msg91Url = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
+                options.headers = {
+                    "Content-Type": "application/json",
+                    "authkey": apiKey,
+                };
+                options.body = JSON.stringify({
+                    integrated_number: process.env.MSG91_INTEGRATED_NUMBER,
+                    content_type: "template",
+                    payload: {
+                        to: cleanMobile,
+                        type: "template",
+                        template: {
+                            name: templateId || "otp_verification",
+                            language: { code: "en", policy: "deterministic" },
+                            components: [
+                                { type: "body", parameters: [{ type: "text", text: otp }] },
+                                { type: "button", sub_type: "url", index: 0, parameters: [{ type: "text", text: otp }] }
+                            ]
+                        }
+                    }
+                });
+            } else {
+                // MSG91 Integrated OTP endpoint
+                msg91Url = `https://control.msg91.com/api/v5/otp?template_id=${templateId}&mobile=${cleanMobile}&authkey=${apiKey}&otp=${otp}`;
+                options.headers = { "Content-Type": "application/json" };
+                options.body = JSON.stringify({ otp });
+            }
+
+            const res = await fetch(msg91Url, options);
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+                return { sent: true, provider: "MSG91", data };
+            }
+            console.warn("[MSG91 WhatsApp Warning] MSG91 returned error, checking fallback:", data);
+        }
+
+        // 3. ULTRAMSG CLOUD API
+        if (provider === "ULTRAMSG" && apiKey && apiKey !== "my_secret_key_123") {
+            const instanceId = process.env.ULTRAMSG_INSTANCE_ID;
+            const ultramsgUrl = `https://api.ultramsg.com/${instanceId}/messages/chat`;
+            const res = await fetch(ultramsgUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    token: apiKey,
+                    to: cleanMobile,
+                    body: message,
+                }),
+                signal: AbortSignal.timeout(10000),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+                return { sent: true, provider: "ULTRAMSG", data };
+            }
+            console.warn("[UltraMsg Warning] UltraMsg returned error, checking fallback:", data);
+        }
+
+        // 4. BAILEYS / DATABASE-SYNCED CLOUDFLARE TUNNEL (AUTO-FALLBACK)
+        let apiUrl = process.env.WHATSAPP_API_URL;
+        if (!apiUrl || apiUrl.includes("localhost") || apiUrl.includes("trycloudflare.com")) {
+            try {
+                const dbSetting = await prisma.setting.findUnique({
+                    where: { key: "WHATSAPP_API_URL" },
+                });
+                if (dbSetting?.value && dbSetting.value.startsWith("http")) {
+                    apiUrl = dbSetting.value;
+                }
+            } catch (dbErr) {
+                console.warn("[WhatsApp OTP] Could not fetch WHATSAPP_API_URL from Setting table:", dbErr);
+            }
+        }
+
+        if (!apiUrl) {
+            apiUrl = "https://britannica-safer-brunswick-health.trycloudflare.com";
+        }
+        const tunnelApiKey = process.env.WHATSAPP_API_KEY || "my_secret_key_123";
+
         const trimmedUrl = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
-        // Supports Open-WA standard /api/sendText or custom endpoint
         const endpoint = trimmedUrl.includes("/api/") ? trimmedUrl : `${trimmedUrl}/api/sendText`;
 
         const res = await fetch(endpoint, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "api_key": apiKey,
-                "X-API-Key": apiKey,
+                "api_key": tunnelApiKey,
+                "X-API-Key": tunnelApiKey,
             },
             body: JSON.stringify({
                 to: `${cleanMobile}@c.us`,
@@ -250,7 +330,7 @@ export async function sendOtpWhatsApp(mobile: string, otp: string, companyName?:
         });
 
         const data = await res.json().catch(() => ({}));
-        return { sent: res.ok, data };
+        return { sent: res.ok, provider: "BAILEYS_GATEWAY", data };
     } catch (error) {
         console.error("[WhatsApp OTP Error]:", error);
         return { sent: false, error: String(error) };
