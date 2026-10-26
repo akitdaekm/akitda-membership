@@ -195,7 +195,26 @@ export async function sendOtpSms(mobile: string, otp: string) {
  * Send OTP via WhatsApp (Open-WA / Baileys / Cloudflare Tunnel / UltraMsg / Custom API)
  */
 export async function sendOtpWhatsApp(mobile: string, otp: string, companyName?: string) {
-    const apiUrl = process.env.WHATSAPP_API_URL || "https://couple-integrate-feelings-thinkpad.trycloudflare.com";
+    let apiUrl = process.env.WHATSAPP_API_URL;
+
+    // Check database Setting table for dynamically registered WhatsApp server tunnel
+    // especially if env is missing, localhost, or a temporary trycloudflare domain
+    if (!apiUrl || apiUrl.includes("localhost") || apiUrl.includes("trycloudflare.com")) {
+        try {
+            const dbSetting = await prisma.setting.findUnique({
+                where: { key: "WHATSAPP_API_URL" },
+            });
+            if (dbSetting?.value && dbSetting.value.startsWith("http")) {
+                apiUrl = dbSetting.value;
+            }
+        } catch (dbErr) {
+            console.warn("[WhatsApp OTP] Could not fetch WHATSAPP_API_URL from Setting table:", dbErr);
+        }
+    }
+
+    if (!apiUrl) {
+        apiUrl = "https://couple-integrate-feelings-thinkpad.trycloudflare.com";
+    }
     const apiKey = process.env.WHATSAPP_API_KEY || "my_secret_key_123";
 
     if (!apiUrl) {
@@ -227,6 +246,7 @@ export async function sendOtpWhatsApp(mobile: string, otp: string, companyName?:
                 to: `${cleanMobile}@c.us`,
                 content: message,
             }),
+            signal: AbortSignal.timeout(10000),
         });
 
         const data = await res.json().catch(() => ({}));

@@ -1,5 +1,6 @@
 import http from "http";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import makeWASocket, {
     DisconnectReason,
@@ -9,10 +10,37 @@ import makeWASocket, {
 import pino from "pino";
 import qrcodeTerminal from "qrcode-terminal";
 import QRCode from "qrcode";
+import { PrismaClient } from "@prisma/client";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Auto-load .env from project root if available
+try {
+    const envPath = path.join(__dirname, "../.env");
+    if (fs.existsSync(envPath)) {
+        if (typeof process.loadEnvFile === "function") {
+            process.loadEnvFile(envPath);
+        } else {
+            const envContent = fs.readFileSync(envPath, "utf-8");
+            for (const line of envContent.split("\n")) {
+                const trimmed = line.trim();
+                if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+                    const [k, ...v] = trimmed.split("=");
+                    const val = v.join("=").replace(/^["'](.*)["']$/, "$1");
+                    if (!process.env[k.trim()]) {
+                        process.env[k.trim()] = val.trim();
+                    }
+                }
+            }
+        }
+    }
+} catch (e) {
+    console.warn("Could not load .env file:", e.message);
+}
+
 const PORT = process.env.PORT || 8085;
 const API_KEY = process.env.WHATSAPP_API_KEY || "my_secret_key_123";
+const prisma = new PrismaClient();
 
 let sock = null;
 let latestQR = null;
@@ -202,13 +230,39 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ error: "Endpoint not found" }));
 });
 
+server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+        console.error(`\n[Server Error] Port ${PORT} is already in use by another instance!`);
+        console.error(`Please stop the previous WhatsApp server before starting a new one.\n`);
+        process.exit(1);
+    } else {
+        console.error("[Server Error]:", err);
+    }
+});
+
+async function saveTunnelUrlToDb(url) {
+    try {
+        await prisma.setting.upsert({
+            where: { key: "WHATSAPP_API_URL" },
+            update: { value: url },
+            create: { key: "WHATSAPP_API_URL", value: url },
+        });
+        console.log(`[DB Auto-Sync] Successfully updated WHATSAPP_API_URL in database to:\n   ${url}\n`);
+    } catch (e) {
+        console.warn("[DB Auto-Sync Warning] Could not update Setting in database:", e.message);
+    }
+}
+
 server.listen(PORT, async () => {
-    console.log(`\n>>> AKITDA WhatsApp Server running on http://localhost:${PORT} <<<`);
+    console.log(`\n=======================================================`);
+    console.log(`>>> AKITDA WhatsApp Server running on http://localhost:${PORT} <<<`);
+    console.log(`=======================================================\n`);
     try {
         const { startTunnel } = await import("untun");
         const tunnel = await startTunnel({ port: PORT });
         const tunnelUrl = await tunnel.getURL();
         console.log(`>>> PUBLIC INTERNET TUNNEL: ${tunnelUrl} <<<\n`);
+        await saveTunnelUrlToDb(tunnelUrl);
     } catch (e) {
         console.log("Note: Local tunnel auto-start skipped:", e.message);
     }
