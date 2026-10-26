@@ -195,7 +195,7 @@ export async function sendOtpSms(mobile: string, otp: string) {
  * Send OTP via WhatsApp (Open-WA / Baileys / Cloudflare Tunnel / UltraMsg / Custom API)
  */
 export async function sendOtpWhatsApp(mobile: string, otp: string, companyName?: string) {
-    const apiUrl = process.env.WHATSAPP_API_URL || "https://desperate-senators-navigation-buildings.trycloudflare.com";
+    const apiUrl = process.env.WHATSAPP_API_URL || "https://couple-integrate-feelings-thinkpad.trycloudflare.com";
     const apiKey = process.env.WHATSAPP_API_KEY || "my_secret_key_123";
 
     if (!apiUrl) {
