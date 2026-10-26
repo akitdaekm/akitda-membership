@@ -213,7 +213,7 @@ export async function sendOtpWhatsApp(mobile: string, otp: string, companyName?:
     }
 
     if (!apiUrl) {
-        apiUrl = "https://couple-integrate-feelings-thinkpad.trycloudflare.com";
+        apiUrl = "https://britannica-safer-brunswick-health.trycloudflare.com";
     }
     const apiKey = process.env.WHATSAPP_API_KEY || "my_secret_key_123";
 
