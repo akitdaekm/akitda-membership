@@ -5,10 +5,16 @@ import { jwtVerify } from "jose";
 
 export async function POST(request: Request) {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get("member_token");
+        const authHeader = request.headers.get("Authorization");
+        let tokenValue = "";
+        if (authHeader && authHeader.startsWith("Bearer ")) {
+            tokenValue = authHeader.split(" ")[1];
+        } else {
+            const cookieStore = await cookies();
+            tokenValue = cookieStore.get("member_token")?.value || "";
+        }
 
-        if (!token) {
+        if (!tokenValue) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
@@ -16,7 +22,7 @@ export async function POST(request: Request) {
             process.env.JWT_SECRET || "default_secret_dev_only"
         );
 
-        const { payload } = await jwtVerify(token.value, secret);
+        const { payload } = await jwtVerify(tokenValue, secret);
         const memberId = payload.id as string;
 
         const body = await request.json();

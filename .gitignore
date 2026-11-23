@@ -55,3 +55,11 @@ baileys_auth/
 /android-app/local.properties
 /android-app/.idea/
 /android-app/release/
+
+# android member app
+/android-member-app/.gradle/
+/android-member-app/build/
+/android-member-app/app/build/
+/android-member-app/local.properties
+/android-member-app/.idea/
+/android-member-app/release/
