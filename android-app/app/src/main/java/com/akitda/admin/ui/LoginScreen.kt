@@ -1,5 +1,6 @@
 package com.akitda.admin.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,13 +44,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.akitda.admin.R
 
 @Composable
 fun LoginScreen(vm: AppViewModel) {
@@ -70,24 +75,39 @@ fun LoginScreen(vm: AppViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
             Box(
                 Modifier
-                    .size(84.dp)
+                    .size(92.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White.copy(alpha = 0.14f)),
+                    .background(Color.White)
+                    .padding(10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("A", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                Image(
+                    painter = painterResource(R.drawable.akitda_logo),
+                    contentDescription = "AKITDA Logo",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
-            Spacer(Modifier.height(18.dp))
-            Text("AKITDA Admin", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "All Kerala IT Dealers Association",
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(2.dp))
             Text(
                 "Ernakulam District Committee",
-                color = Color.White.copy(alpha = 0.7f),
+                color = Cyan,
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(28.dp))
 
             Column(
                 Modifier

@@ -72,6 +72,14 @@ fun TeamScreen(vm: AppViewModel) {
     var resetFor by remember { mutableStateOf<AdminUser?>(null) }
     var showAdd by remember { mutableStateOf(false) }
 
+    // Show only Ernakulam District Committee accounts (exclude other 13 districts & state accounts)
+    val ekmUsers = remember(vm.users) {
+        vm.users.filter { u ->
+            val e = u.email.lowercase()
+            e.endsWith("@akitdaekm.com") || e.contains(".ekm@") || !e.endsWith("@akitda.in")
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
@@ -83,9 +91,9 @@ fun TeamScreen(vm: AppViewModel) {
         Column(Modifier.padding(inner).fillMaxSize()) {
             GradientHeaderBackground(Modifier.fillMaxWidth()) {
                 Column(Modifier.statusBarsPadding().padding(16.dp)) {
-                    Text("Team & permissions", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                    Text("Ernakulam District Team", color = Color.White, style = MaterialTheme.typography.titleLarge)
                     Text(
-                        "Choose what each office bearer can do in the app and on the website.",
+                        "All Kerala IT Dealers Association — manage President, Secretary & Treasurer permissions.",
                         color = Color.White.copy(alpha = 0.75f),
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -100,7 +108,7 @@ fun TeamScreen(vm: AppViewModel) {
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(vm.users, key = { it.id }) { u ->
+                    items(ekmUsers, key = { it.id }) { u ->
                         Card(
                             Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.large,

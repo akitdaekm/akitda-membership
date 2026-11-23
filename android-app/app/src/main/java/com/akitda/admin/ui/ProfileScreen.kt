@@ -96,6 +96,8 @@ fun ProfileScreen(vm: AppViewModel) {
             }
 
             SectionCard("About") {
+                InfoRow("Association", "All Kerala IT Dealers Association")
+                InfoRow("Committee", "Ernakulam District Committee")
                 InfoRow("Server", BuildConfig.BASE_URL.removePrefix("https://"))
                 InfoRow("Version", BuildConfig.VERSION_NAME)
             }

@@ -1,6 +1,7 @@
 package com.akitda.admin.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -53,8 +55,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.akitda.admin.R
 import com.akitda.admin.data.Member
 
 private enum class Tab(val label: String, val icon: ImageVector) {
@@ -227,11 +232,48 @@ private fun DashboardScreen(vm: AppViewModel, onOpenMembers: (String) -> Unit) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         GradientHeaderBackground(Modifier.fillMaxWidth()) {
-            Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 22.dp)) {
-                Text("Welcome back,", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium)
-                Text(admin.displayName, color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                Spacer(Modifier.height(8.dp))
-                RoleBadge(admin.role)
+            Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 20.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White)
+                            .padding(5.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.akitda_logo),
+                            contentDescription = "AKITDA Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            "All Kerala IT Dealers Association",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Text(
+                            "Ernakulam District Committee",
+                            color = Cyan,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Text("Welcome back,", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall)
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(admin.displayName, color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                    RoleBadge(admin.role)
+                }
             }
         }
 
