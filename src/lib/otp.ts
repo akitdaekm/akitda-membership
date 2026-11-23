@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import nodemailer from "nodemailer";
+import { resolveWhatsAppGatewayUrl } from "@/lib/whatsapp-gateway";
 
 /**
  * Generate a 6-digit random OTP and save to database with 10-minute expiry
@@ -292,28 +293,11 @@ export async function sendOtpWhatsApp(mobile: string, otp: string, companyName?:
             console.warn("[UltraMsg Warning] UltraMsg returned error, checking fallback:", data);
         }
 
-        // 4. BAILEYS / DATABASE-SYNCED CLOUDFLARE TUNNEL (AUTO-FALLBACK)
-        let apiUrl = process.env.WHATSAPP_API_URL;
-        if (!apiUrl || apiUrl.includes("localhost") || apiUrl.includes("trycloudflare.com")) {
-            try {
-                const dbSetting = await prisma.setting.findUnique({
-                    where: { key: "WHATSAPP_API_URL" },
-                });
-                if (dbSetting?.value && dbSetting.value.startsWith("http")) {
-                    apiUrl = dbSetting.value;
-                }
-            } catch (dbErr) {
-                console.warn("[WhatsApp OTP] Could not fetch WHATSAPP_API_URL from Setting table:", dbErr);
-            }
-        }
-
-        if (!apiUrl) {
-            apiUrl = "https://britannica-safer-brunswick-health.trycloudflare.com";
-        }
+        // 4. BAILEYS GATEWAY (LOCAL VPS PM2 OR DB-SYNCED URL)
+        const apiUrl = await resolveWhatsAppGatewayUrl();
         const tunnelApiKey = process.env.WHATSAPP_API_KEY || "my_secret_key_123";
 
-        const trimmedUrl = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
-        const endpoint = trimmedUrl.includes("/api/") ? trimmedUrl : `${trimmedUrl}/api/sendText`;
+        const endpoint = apiUrl.includes("/api/") ? apiUrl : `${apiUrl}/api/sendText`;
 
         const res = await fetch(endpoint, {
             method: "POST",

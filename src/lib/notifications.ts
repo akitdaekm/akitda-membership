@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { prisma } from "@/lib/prisma";
+import { resolveWhatsAppGatewayUrl } from "@/lib/whatsapp-gateway";
 
 type NotificationChannel = "SMS" | "WHATSAPP" | "EMAIL";
 
@@ -17,27 +17,9 @@ async function sendWhatsAppText(mobile: string, message: string): Promise<boolea
             cleanMobile = `91${cleanMobile}`;
         }
 
-        let apiUrl = process.env.WHATSAPP_API_URL;
-        if (!apiUrl || apiUrl.includes("localhost") || apiUrl.includes("trycloudflare.com")) {
-            try {
-                const dbSetting = await prisma.setting.findUnique({
-                    where: { key: "WHATSAPP_API_URL" },
-                });
-                if (dbSetting?.value && dbSetting.value.startsWith("http")) {
-                    apiUrl = dbSetting.value;
-                }
-            } catch {
-                // ignore DB lookup error
-            }
-        }
-
-        if (!apiUrl) {
-            apiUrl = "http://localhost:8085";
-        }
-
+        const apiUrl = await resolveWhatsAppGatewayUrl();
         const apiKey = process.env.WHATSAPP_API_KEY || "my_secret_key_123";
-        const trimmedUrl = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
-        const endpoint = trimmedUrl.includes("/api/") ? trimmedUrl : `${trimmedUrl}/api/sendText`;
+        const endpoint = apiUrl.includes("/api/") ? apiUrl : `${apiUrl}/api/sendText`;
 
         const res = await fetch(endpoint, {
             method: "POST",
