@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ERNAKULAM_UNITS } from "@/lib/units";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -1117,7 +1118,7 @@ export default function MemberDashboard() {
                                                         <SelectValue placeholder="Select Unit" />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-[#1b429b] border-[#1e3a8a] text-white">
-                                                        {["Aluva", "Perumbavoor", "Paravoor", "Kothamangalam", "Angamaly", "Vypin", "Edappally", "Kacheripady", "Panambilly Nagar"].map(u => (
+                                                        {ERNAKULAM_UNITS.map(u => (
                                                             <SelectItem key={u} value={u} className="focus:bg-blue-600 focus:text-white">{u}</SelectItem>
                                                         ))}
                                                     </SelectContent>

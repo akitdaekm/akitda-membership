@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Trash2, Plus, Building2, Phone, Users, FileText } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ERNAKULAM_UNITS } from "@/lib/units";
 
 const companyTypes = [
     "Proprietorship",
@@ -298,15 +299,11 @@ export function RegistrationForm() {
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="Aluva">Aluva</SelectItem>
-                                            <SelectItem value="Perumbavoor">Perumbavoor</SelectItem>
-                                            <SelectItem value="Paravoor">Paravoor</SelectItem>
-                                            <SelectItem value="Kothamangalam">Kothamangalam</SelectItem>
-                                            <SelectItem value="Angamaly">Angamaly</SelectItem>
-                                            <SelectItem value="Vypin">Vypin</SelectItem>
-                                            <SelectItem value="Edappally">Edappally</SelectItem>
-                                            <SelectItem value="Kacheripady">Kacheripady</SelectItem>
-                                            <SelectItem value="Panambilly Nagar">Panambilly Nagar</SelectItem>
+                                            {ERNAKULAM_UNITS.map((unitName) => (
+                                                <SelectItem key={unitName} value={unitName}>
+                                                    {unitName}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
