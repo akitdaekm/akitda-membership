@@ -56,6 +56,7 @@ type Member = {
     approvalSecretary?: boolean;
     approvalTreasurer?: boolean;
     partners?: { name: string; phone?: string; email?: string }[];
+    payments?: any[];
     pincode?: string;
 };
 
@@ -107,6 +108,27 @@ export default function AdminDashboard() {
 
     // Dialog States for Upcoming Programs Board
     const [isProgramDialogOpen, setIsProgramDialogOpen] = useState(false);
+    const [paymentLinkMember, setPaymentLinkMember] = useState<Member | null>(null);
+    const [paymentFeeType, setPaymentFeeType] = useState<"NEW" | "RENEWAL" | "CUSTOM">("NEW");
+    const [paymentAmount, setPaymentAmount] = useState("3776");
+    const [customPaymentUrl, setCustomPaymentUrl] = useState("");
+    const [sendingPaymentLink, setSendingPaymentLink] = useState(false);
+    const [docSettings, setDocSettings] = useState({
+        showIdCard: true,
+        showCertificate: true,
+        showTaxInvoice: true,
+        showReceipt: true,
+    });
+    const [savingDocSettings, setSavingDocSettings] = useState(false);
+
+    useEffect(() => {
+        fetch("/api/settings/documents")
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                if (d) setDocSettings(d);
+            })
+            .catch(() => {});
+    }, []);
     const [editingProgram, setEditingProgram] = useState<ProgramItem | null>(null);
 
     // Settings
@@ -695,7 +717,7 @@ export default function AdminDashboard() {
                 </div>
             </header>
 
-            <main className="container mx-auto px-6 py-8">
+            <main className="w-full max-w-[1600px] mx-auto px-4 lg:px-6 py-8">
                 <div className="mb-8">
                     <h2 className="text-3xl font-bold text-white tracking-tight">Dashboard Overview</h2>
                     <p className="text-slate-400 mt-1">Manage members, upcoming programs board, office bearers, and gallery content.</p>
@@ -787,9 +809,9 @@ export default function AdminDashboard() {
                                         ) : (
                                             filteredMembers.map((member) => (
                                                 <TableRow key={member.id} className="border-slate-800 hover:bg-slate-800/40">
-                                                    <TableCell className="font-medium text-slate-200">{member.companyName}</TableCell>
-                                                    <TableCell className="text-slate-300">{member.companyType}</TableCell>
-                                                    <TableCell>
+                                                    <TableCell className="font-medium text-slate-200 whitespace-normal break-words max-w-[200px]">{member.companyName}</TableCell>
+                                                    <TableCell className="text-slate-300 whitespace-normal">{member.companyType}</TableCell>
+                                                    <TableCell className="whitespace-normal break-words max-w-[260px]">
                                                         <div className="font-medium text-slate-200">{member.primaryMobile}</div>
                                                         <div className="text-sm text-slate-400">{member.primaryEmail}</div>
                                                         <div className="text-xs text-slate-500 mt-1">
@@ -892,15 +914,33 @@ export default function AdminDashboard() {
                                                             {member.status === "PAYMENT_PENDING" && (
                                                                 <div className="flex flex-col gap-2 w-full">
                                                                     <div className="text-xs text-blue-400 font-mono bg-blue-900/30 p-1.5 rounded text-center border border-blue-800/50">
-                                                                        Pending Verification
+                                                                        <div>Pending Verification</div>
+                                                                        {member.payments?.find((p: any) => p.status === "PENDING")?.transactionId && (
+                                                                            <div className="text-[11px] text-amber-300 mt-0.5 select-all">
+                                                                                UTR: {member.payments.find((p: any) => p.status === "PENDING")?.transactionId}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                     <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white w-full shadow" onClick={async () => {
-                                                                        if (!confirm("Confirm payment received?")) return;
+                                                                        if (!confirm("Confirm payment received in bank?")) return;
                                                                         const res = await fetch(`/api/admin/members/${member.id}/verify-payment`, { method: "PUT" });
                                                                         if (res.ok) fetchMembers();
                                                                         else alert((await res.json()).message);
                                                                     }}>
                                                                         <Check className="w-4 h-4 mr-1" /> Verify Payment
+                                                                    </Button>
+                                                                    <Button size="sm" variant="destructive" className="w-full shadow" onClick={async () => {
+                                                                        const reason = prompt("Reason for declining (e.g., Payment not received / Cancelled):", "Payment not received in bank statement");
+                                                                        if (reason === null) return;
+                                                                        const res = await fetch(`/api/admin/members/${member.id}/verify-payment`, {
+                                                                            method: "PUT",
+                                                                            headers: { "Content-Type": "application/json" },
+                                                                            body: JSON.stringify({ action: "DECLINE", reason }),
+                                                                        });
+                                                                        if (res.ok) fetchMembers();
+                                                                        else alert((await res.json()).message);
+                                                                    }}>
+                                                                        Decline
                                                                     </Button>
                                                                 </div>
                                                             )}
@@ -929,6 +969,63 @@ export default function AdminDashboard() {
                                                                     className="bg-emerald-600 hover:bg-emerald-700 text-white w-full shadow"
                                                                 >
                                                                     <Check className="w-4 h-4 mr-1" /> Vote / Approve
+                                                                </Button>
+                                                            )}
+
+                                                            {(member.status === "APPROVED" || member.status === "PAYMENT_PENDING") && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="border-blue-600/60 bg-blue-950/30 text-blue-300 hover:bg-blue-800 hover:text-white w-full text-xs"
+                                                                    onClick={() => {
+                                                                        const defaultType = member.memberType === "EXISTING" ? "RENEWAL" : "NEW";
+                                                                        setPaymentLinkMember(member);
+                                                                        setPaymentFeeType(defaultType);
+                                                                        setPaymentAmount(defaultType === "RENEWAL" ? "1416" : "3776");
+                                                                        setCustomPaymentUrl("");
+                                                                    }}
+                                                                >
+                                                                    Send Payment Link
+                                                                </Button>
+                                                            )}
+
+                                                            {member.status !== "ACTIVE" && member.status !== "REJECTED" && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="border-cyan-700/60 bg-cyan-950/30 text-cyan-300 hover:bg-cyan-800 hover:text-white w-full text-xs"
+                                                                    onClick={async () => {
+                                                                        if (!confirm(`Mark ${member.companyName} as EXISTING PAID and activate without payment? (Requires 2 committee approvals)`)) return;
+                                                                        const res = await fetch(`/api/admin/members/${member.id}/status`, {
+                                                                            method: "PUT",
+                                                                            headers: { "Content-Type": "application/json" },
+                                                                            body: JSON.stringify({ markExistingPaid: true }),
+                                                                        });
+                                                                        if (res.ok) fetchMembers();
+                                                                        else alert((await res.json()).message);
+                                                                    }}
+                                                                >
+                                                                    Existing Paid (Activate)
+                                                                </Button>
+                                                            )}
+
+                                                            {member.memberType === "NEW" && member.status !== "ACTIVE" && member.status !== "REJECTED" && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="border-amber-700/60 bg-amber-950/30 text-amber-300 hover:bg-amber-800 hover:text-white w-full text-xs"
+                                                                    onClick={async () => {
+                                                                        if (!confirm(`Switch ${member.companyName} to EXISTING (Renewal ₹1,416)?`)) return;
+                                                                        const res = await fetch(`/api/admin/members/${member.id}/status`, {
+                                                                            method: "PUT",
+                                                                            headers: { "Content-Type": "application/json" },
+                                                                            body: JSON.stringify({ memberType: "EXISTING" }),
+                                                                        });
+                                                                        if (res.ok) fetchMembers();
+                                                                        else alert((await res.json()).message);
+                                                                    }}
+                                                                >
+                                                                    Set Renewal (₹1,416)
                                                                 </Button>
                                                             )}
 
@@ -1558,6 +1655,70 @@ export default function AdminDashboard() {
 
                                 </Card>
 
+                                <Card className="border-slate-800 bg-slate-900 shadow-xl">
+                                    <CardHeader className="border-b border-slate-800 bg-slate-950/50">
+                                        <CardTitle className="text-white flex items-center gap-2">
+                                            Member Dashboard Document Visibility
+                                        </CardTitle>
+                                        <p className="text-sm text-slate-400">
+                                            Enable or disable documents shown on active members&apos; dashboards (Super Admin only).
+                                        </p>
+                                    </CardHeader>
+                                    <CardContent className="p-6 space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {[
+                                                { key: "showIdCard", label: "Members ID Card" },
+                                                { key: "showCertificate", label: "Membership Certificate" },
+                                                { key: "showTaxInvoice", label: "Tax Invoice" },
+                                                { key: "showReceipt", label: "Payment Receipt" },
+                                            ].map((item) => {
+                                                const checked = docSettings[item.key as keyof typeof docSettings];
+                                                return (
+                                                    <label
+                                                        key={item.key}
+                                                        className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer"
+                                                    >
+                                                        <span className="text-sm font-medium text-slate-200">{item.label}</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={(e) =>
+                                                                setDocSettings((prev) => ({
+                                                                    ...prev,
+                                                                    [item.key]: e.target.checked,
+                                                                }))
+                                                            }
+                                                            className="w-4 h-4 accent-blue-600"
+                                                        />
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                        <Button
+                                            disabled={savingDocSettings}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                                            onClick={async () => {
+                                                setSavingDocSettings(true);
+                                                try {
+                                                    const res = await fetch("/api/settings/documents", {
+                                                        method: "PUT",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify(docSettings),
+                                                    });
+                                                    const data = await res.json();
+                                                    alert(data.message || "Saved");
+                                                } catch {
+                                                    alert("Failed to update document settings");
+                                                } finally {
+                                                    setSavingDocSettings(false);
+                                                }
+                                            }}
+                                        >
+                                            {savingDocSettings ? "Saving..." : "Save Document Settings"}
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+
                                 <Card className="border-red-900/50 bg-red-950/20 shadow-xl">
 
                                     <CardHeader className="border-b border-red-900/50 bg-red-900/10">
@@ -1624,6 +1785,117 @@ export default function AdminDashboard() {
                     )}
                 </Tabs>
             </main>
+
+            {/* SEND PAYMENT LINK DIALOG */}
+            <Dialog open={!!paymentLinkMember} onOpenChange={(open) => !open && setPaymentLinkMember(null)}>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-white">Send Payment Link (WhatsApp &amp; Email)</DialogTitle>
+                        <p className="text-sm text-slate-400">
+                            Send a membership or renewal payment request to <strong>{paymentLinkMember?.companyName}</strong>.
+                        </p>
+                    </DialogHeader>
+                    <form
+                        onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!paymentLinkMember) return;
+                            setSendingPaymentLink(true);
+                            try {
+                                const res = await fetch(`/api/admin/members/${paymentLinkMember.id}/send-payment-link`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        feeType: paymentFeeType,
+                                        amount: Number(paymentAmount),
+                                        paymentLink: customPaymentUrl,
+                                    }),
+                                });
+                                const data = await res.json();
+                                if (res.ok) {
+                                    alert(data.message);
+                                    setPaymentLinkMember(null);
+                                    fetchMembers();
+                                } else {
+                                    alert(data.message || "Failed to send payment link");
+                                }
+                            } catch {
+                                alert("Failed to send payment link");
+                            } finally {
+                                setSendingPaymentLink(false);
+                            }
+                        }}
+                        className="space-y-4 mt-2"
+                    >
+                        <div className="space-y-2">
+                            <Label className="text-slate-300 text-xs">Fee Category</Label>
+                            <div className="grid grid-cols-3 gap-2">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={paymentFeeType === "NEW" ? "default" : "outline"}
+                                    className={paymentFeeType === "NEW" ? "bg-blue-600 text-white" : "border-slate-700 text-slate-300"}
+                                    onClick={() => { setPaymentFeeType("NEW"); setPaymentAmount("3776"); }}
+                                >
+                                    New (₹3,776)
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={paymentFeeType === "RENEWAL" ? "default" : "outline"}
+                                    className={paymentFeeType === "RENEWAL" ? "bg-blue-600 text-white" : "border-slate-700 text-slate-300"}
+                                    onClick={() => { setPaymentFeeType("RENEWAL"); setPaymentAmount("1416"); }}
+                                >
+                                    Renewal (₹1,416)
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={paymentFeeType === "CUSTOM" ? "default" : "outline"}
+                                    className={paymentFeeType === "CUSTOM" ? "bg-blue-600 text-white" : "border-slate-700 text-slate-300"}
+                                    onClick={() => setPaymentFeeType("CUSTOM")}
+                                >
+                                    Custom
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="payAmount" className="text-slate-300 text-xs">Amount (₹)</Label>
+                            <Input
+                                id="payAmount"
+                                type="number"
+                                min="1"
+                                step="any"
+                                value={paymentAmount}
+                                onChange={(e) => setPaymentAmount(e.target.value)}
+                                required
+                                className="bg-slate-950 border-slate-700 text-white font-mono"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="customPayUrl" className="text-slate-300 text-xs">Custom Payment Link (Optional)</Label>
+                            <Input
+                                id="customPayUrl"
+                                type="url"
+                                placeholder="Leave blank to auto-send official UPI pay link"
+                                value={customPaymentUrl}
+                                onChange={(e) => setCustomPaymentUrl(e.target.value)}
+                                className="bg-slate-950 border-slate-700 text-white text-sm"
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button type="button" variant="ghost" onClick={() => setPaymentLinkMember(null)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={sendingPaymentLink} className="bg-blue-600 hover:bg-blue-700 text-white">
+                                {sendingPaymentLink ? "Sending..." : "Send to WhatsApp & Email"}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

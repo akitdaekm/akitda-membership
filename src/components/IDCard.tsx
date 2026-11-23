@@ -273,7 +273,11 @@ export const MemberIDCardDocument = ({
     secretarySignatureUrl,
     officialSealUrl,
 }: IDCardProps) => {
-    const formattedId = membershipId || "PENDING";
+    const formattedId = membershipId
+        ? membershipId.startsWith("AKITDA")
+            ? membershipId
+            : membershipId.replace(/^(?:AKEKM|EKM)(\d+)$/i, (_, n) => `AKITDA | EKM | ${n.padStart(3, "0")}`)
+        : "PENDING";
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(formattedId)}`;
     const photoUrl = profilePhoto || "/akitda-logo.png";
 

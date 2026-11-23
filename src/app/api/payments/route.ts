@@ -22,18 +22,42 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { transactionId, paymentDate } = body;
 
-        if (!transactionId) {
-            return NextResponse.json({ message: "Transaction ID is required" }, { status: 400 });
+        const cleanUtr = typeof transactionId === "string" ? transactionId.trim() : "";
+        if (!/^\d{12}$/.test(cleanUtr)) {
+            return NextResponse.json(
+                { message: "Please enter a valid 12-digit numeric UPI Transaction ID / UTR." },
+                { status: 400 }
+            );
         }
+
+        const member = await prisma.member.findUnique({ where: { id: memberId } });
+        if (!member) {
+            return NextResponse.json({ message: "Member not found" }, { status: 404 });
+        }
+
+        const existingUtr = await prisma.payment.findFirst({
+            where: {
+                transactionId: cleanUtr,
+                status: { in: ["PENDING", "PAID"] },
+            },
+        });
+        if (existingUtr) {
+            return NextResponse.json(
+                { message: "This UTR / Transaction ID has already been submitted." },
+                { status: 400 }
+            );
+        }
+
+        const payableAmount = member.memberType === "NEW" ? 3776 : 1416;
 
         // Create Payment Record
         const payment = await prisma.payment.create({
             data: {
                 memberId,
-                amount: 5000, // Fixed amount for now, or fetch from config
+                amount: payableAmount,
                 year: new Date().getFullYear(),
                 status: "PENDING",
-                transactionId,
+                transactionId: cleanUtr,
                 paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
             },
         });

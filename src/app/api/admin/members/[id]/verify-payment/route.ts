@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { getFinancialYear } from "@/lib/financial-year";
+import { generateNextMembershipId } from "@/lib/membership-id";
 
 export async function PUT(
     request: Request,
@@ -30,6 +31,37 @@ export async function PUT(
             return NextResponse.json({ message: "No pending payment found" }, { status: 404 });
         }
 
+        let action = "APPROVE";
+        let reason = "";
+        try {
+            const body = await request.json();
+            if (body?.action === "DECLINE") {
+                action = "DECLINE";
+                reason = typeof body.reason === "string" ? body.reason.trim() : "";
+            }
+        } catch {
+            // Empty body defaults to APPROVE
+        }
+
+        if (action === "DECLINE") {
+            await prisma.payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: "DECLINED",
+                    breakdown: JSON.stringify({
+                        declineReason: reason || "Payment not received / Declined by admin",
+                    }),
+                },
+            });
+
+            await prisma.member.update({
+                where: { id },
+                data: { status: "APPROVED" },
+            });
+
+            return NextResponse.json({ message: "Payment marked as declined" });
+        }
+
         // Generate Receipt Number: EKM/YYYY/XXX (e.g., EKM/2526/001)
         const { startYear, endYear } = getFinancialYear();
         const count = await prisma.payment.count({
@@ -54,25 +86,12 @@ export async function PUT(
             }
         });
 
-        // Generate Membership ID if not present (Format: AKEKM001)
+        // Generate Membership ID if not present (Format: AKITDA | EKM | 001)
         const currentMember = await prisma.member.findUnique({ where: { id } });
         let newMembershipId = undefined;
 
         if (currentMember && !currentMember.membershipId) {
-            // Find last membership ID starting with AKEKM
-            const lastMember = await prisma.member.findFirst({
-                where: { membershipId: { startsWith: "AKEKM" } },
-                orderBy: { membershipId: "desc" },
-            });
-
-            let nextIdNum = 1;
-            if (lastMember && lastMember.membershipId) {
-                const lastNum = parseInt(lastMember.membershipId.replace("AKEKM", ""), 10);
-                if (!isNaN(lastNum)) {
-                    nextIdNum = lastNum + 1;
-                }
-            }
-            newMembershipId = `AKEKM${String(nextIdNum).padStart(3, "0")}`;
+            newMembershipId = await generateNextMembershipId();
         }
 
         // Calculate validUntil: 1 year from today

@@ -290,7 +290,11 @@ export const MembershipCertificate = ({
     treasurerSignatureUrl,
     officialSealUrl
 }: CertificateProps) => {
-    const serialNumber = membershipId ? (membershipId.startsWith("AKEKM") ? membershipId.replace("AKEKM", "EKM") : membershipId) : "EKM007";
+    const serialNumber = membershipId
+        ? membershipId.startsWith("AKITDA")
+            ? membershipId
+            : membershipId.replace(/^AKEKM(\d+)$/i, "AKITDA | EKM | $1")
+        : "AKITDA | EKM | 001";
 
     return (
         <Document>

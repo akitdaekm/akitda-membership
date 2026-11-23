@@ -22,6 +22,7 @@ import { ReceiptDocument } from "@/components/Receipt";
 import { TaxInvoice } from "@/components/TaxInvoice";
 import { MemberIDCardDocument } from "@/components/IDCard";
 import { useRouter } from "next/navigation";
+import QRCode from "qrcode";
 import { getFinancialYear } from "@/lib/financial-year";
 import { openBase64File } from "@/lib/utils";
 
@@ -52,7 +53,32 @@ export default function MemberDashboard() {
     const [loading, setLoading] = useState(true);
     const [transactionId, setTransactionId] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [upiQrDataUrl, setUpiQrDataUrl] = useState<string>("");
     const [isMounted, setIsMounted] = useState(false);
+    const [docSettings, setDocSettings] = useState({
+        showIdCard: true,
+        showCertificate: true,
+        showTaxInvoice: true,
+        showReceipt: true,
+    });
+
+    useEffect(() => {
+        fetch("/api/settings/documents")
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                if (d) setDocSettings(d);
+            })
+            .catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        if (!member || member.status !== "APPROVED") return;
+        const amount = member.memberType === "NEW" ? "3776.00" : "1416.00";
+        const upiUri = `upi://pay?pa=8547026604@okbizaxis&pn=AKITDA&am=${amount}&cu=INR&tn=${encodeURIComponent(`AKITDA-${member.id.slice(-6)}`)}`;
+        QRCode.toDataURL(upiUri, { width: 180, margin: 1 })
+            .then((url: string) => setUpiQrDataUrl(url))
+            .catch(() => setUpiQrDataUrl(""));
+    }, [member]);
 
     // Address Update States
     const [showAddressModal, setShowAddressModal] = useState(false);
@@ -515,7 +541,7 @@ export default function MemberDashboard() {
                                 {member.status === 'PROFILE_PENDING' && <AlertCircle className="h-4 w-4" />}
                                 {member.status === 'APPROVED' && <AlertCircle className="h-4 w-4" />}
                                 {member.status === 'PENDING' && <Clock className="h-4 w-4" />}
-                                {member.status}
+                                {member.status === "ACTIVE" ? "ACTIVE" : "PROCESSING"}
                             </div>
                             {member.membershipId && (
                                 <div className="text-right">
@@ -681,89 +707,17 @@ export default function MemberDashboard() {
                             </CardContent>
                         </Card>
 
-                        {/* PAYMENT ACTION CARD (for APPROVED status) */}
+                        {/* APPROVED STATE - PAYMENT LINK SENT BY COMMITTEE */}
                         {member.status === "APPROVED" && (
                             <Card className="border-blue-900 bg-[#0f172a] shadow-md border-t-4 border-t-blue-500">
-                                <CardHeader>
-                                    <CardTitle className="text-blue-400 flex items-center gap-2 text-xl">
-                                        <AlertCircle className="h-6 w-6" />
-                                        Action Required: Complete Payment
-                                    </CardTitle>
-                                    <CardDescription className="text-blue-200/80">
-                                        Your membership request has been approved. Please pay the required fees to activate your account.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="bg-[#1e293b] rounded-xl border border-slate-700 shadow-sm overflow-hidden">
-                                        <div className="grid md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-slate-700">
-                                            {/* FEE BREAKDOWN */}
-                                            <div className="md:col-span-3 p-6 space-y-4">
-                                                <h3 className="font-semibold text-white mb-2">Membership Fee Structure</h3>
-                                                <div className="space-y-3 text-sm">
-                                                    {member.memberType === "NEW" && (
-                                                        <div className="flex justify-between items-center text-slate-300">
-                                                            <span>Admission Fee (One-time)</span>
-                                                            <span className="font-mono">₹ 2,000.00</span>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex justify-between items-center text-slate-300">
-                                                        <span>Annual Membership Fee</span>
-                                                        <span className="font-mono">₹ 1,200.00</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center text-slate-400">
-                                                        <span>GST (18% on Fees)</span>
-                                                        <span className="font-mono">₹ {member.memberType === "NEW" ? "576.00" : "216.00"}</span>
-                                                    </div>
-                                                    <div className="pt-3 mt-3 border-t border-slate-700 flex justify-between items-center font-bold text-lg text-white">
-                                                        <span>Total Payable</span>
-                                                        <span className="font-mono text-blue-400">₹ {member.memberType === "NEW" ? "3,776.00" : "1,416.00"}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-6 bg-blue-900/30 p-4 rounded-lg border border-blue-800/50">
-                                                    <p className="text-xs font-bold text-blue-400 uppercase mb-2">Pay via UPI</p>
-                                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                                        <div>
-                                                            <p className="font-mono font-bold text-lg text-white">8547026604@okbizaxis</p>
-                                                            <p className="text-xs text-slate-400">AKITDA Official Account</p>
-                                                        </div>
-                                                        <a
-                                                            href={`upi://pay?pa=8547026604@okbizaxis&pn=AKITDA&am=${member.memberType === "NEW" ? "3776.00" : "1416.00"}&cu=INR`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium transition-colors"
-                                                        >
-                                                            Pay Now
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* SUBMIT PROOF */}
-                                            <div className="md:col-span-2 p-6 bg-slate-800/50">
-                                                <h3 className="font-semibold text-white mb-2">Verify Payment</h3>
-                                                <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-                                                    After payment, enter the Transaction ID (UTR / Reference No) below to process your receipt.
-                                                </p>
-                                                <form onSubmit={submitPayment} className="space-y-4">
-                                                    <div className="space-y-1.5">
-                                                        <Label htmlFor="tid" className="text-xs font-medium text-slate-400">Transaction ID / UTR</Label>
-                                                        <Input
-                                                            id="tid"
-                                                            placeholder="e.g. 403819XXXXXX"
-                                                            value={transactionId}
-                                                            onChange={(e) => setTransactionId(e.target.value)}
-                                                            required
-                                                            className="font-mono text-sm bg-slate-900 border-slate-700 text-white"
-                                                        />
-                                                    </div>
-                                                    <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                                                        {submitting ? "Verifying..." : "Submit for Verification"}
-                                                    </Button>
-                                                </form>
-                                            </div>
-                                        </div>
+                                <CardContent className="pt-8 pb-8 flex flex-col items-center text-center">
+                                    <div className="h-16 w-16 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 mb-4">
+                                        <CheckCircle className="h-8 w-8" />
                                     </div>
+                                    <h3 className="text-xl font-bold text-blue-400 mb-2">Application Approved — Payment Link Pending</h3>
+                                    <p className="text-blue-200/80 max-w-lg text-sm leading-relaxed">
+                                        Your membership application has been approved by the AKITDA Committee. Our committee (President / Secretary / Treasurer) will send your membership/renewal payment link to your registered WhatsApp &amp; Email shortly.
+                                    </p>
                                 </CardContent>
                             </Card>
                         )}
@@ -871,12 +825,12 @@ export default function MemberDashboard() {
                             <CardContent className="p-3 pt-3">
                                 <div className="flex items-center gap-3">
                                     <div className={`h-3 w-3 rounded-full ${member.status === 'ACTIVE' ? 'bg-green-400 shadow-[0_0_0_4px_rgba(74,222,128,0.2)]' : 'bg-yellow-400'}`}></div>
-                                    <span className="font-bold text-lg text-white">{member.status.replace('_', ' ')}</span>
+                                    <span className="font-bold text-lg text-white">{member.status === "ACTIVE" ? "ACTIVE" : "PROCESSING"}</span>
                                 </div>
                                 <p className="text-sm text-blue-100 mt-2 leading-snug">
-                                    {member.status === 'ACTIVE'
+                                    {member.status === "ACTIVE"
                                         ? "Your membership is active and valid for the current financial year."
-                                        : "Your account is currently under review or pending action."
+                                        : "Your membership is currently processing. It will become Active once payment is completed and verified."
                                     }
                                 </p>
                             </CardContent>
@@ -888,13 +842,14 @@ export default function MemberDashboard() {
                         </Card>
 
                         {/* Documents Section (Only for ACTIVE members) */}
-                        {member.status === "ACTIVE" && (
+                        {member.status === "ACTIVE" && (docSettings.showIdCard || docSettings.showCertificate || docSettings.showTaxInvoice || docSettings.showReceipt) && (
                             <div className="space-y-3">
                                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest pl-1">Legal Documents</h3>
 
                                 {/* GST Certificate moved to Company Profile section */}
 
                                 {/* Digital ID Card */}
+                                {docSettings.showIdCard && (
                                 <Card className="overflow-hidden hover:border-amber-400 transition-colors group cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-md">
                                     <div className="p-3 flex items-center gap-3">
                                         <div className="h-8 w-8 rounded-md bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 group-hover:bg-amber-500 group-hover:text-white transition-colors">
@@ -934,7 +889,9 @@ export default function MemberDashboard() {
                                         )}
                                     </div>
                                 </Card>
+                                )}
 
+                                {docSettings.showCertificate && (
                                 <Card className="overflow-hidden hover:border-blue-400 transition-colors group cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-md">
                                     <div className="p-3 flex items-center gap-3">
                                         <div className="h-8 w-8 rounded-md bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 group-hover:bg-blue-500 group-hover:text-white transition-colors">
@@ -969,8 +926,11 @@ export default function MemberDashboard() {
                                         )}
                                     </div>
                                 </Card>
+                                )}
 
+                                {(docSettings.showTaxInvoice || docSettings.showReceipt) && (
                                 <div className="grid grid-cols-2 gap-3">
+                                    {docSettings.showTaxInvoice && (
                                     <Card className="overflow-hidden hover:border-green-400 transition-colors group cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-md">
                                         <div className="p-3 flex items-center gap-3">
                                             <div className="h-8 w-8 rounded-md bg-green-500/20 text-green-400 flex items-center justify-center shrink-0 group-hover:bg-green-500 group-hover:text-white transition-colors">
@@ -1014,7 +974,9 @@ export default function MemberDashboard() {
                                             )}
                                         </div>
                                     </Card>
+                                    )}
 
+                                    {docSettings.showReceipt && (
                                     <Card className="overflow-hidden hover:border-teal-400 transition-colors group cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-md">
                                         <div className="p-3 flex items-center gap-3">
                                             <div className="h-8 w-8 rounded-md bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0 group-hover:bg-teal-500 group-hover:text-white transition-colors">
@@ -1052,7 +1014,9 @@ export default function MemberDashboard() {
                                             )}
                                         </div>
                                     </Card>
+                                    )}
                                 </div>
+                                )}
                             </div>
                         )}
 
