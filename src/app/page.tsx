@@ -137,7 +137,7 @@ export default async function Home() {
                   </div>
                   <h4 className="text-xl font-bold text-white mb-2 group-hover:underline">IT Shoppe</h4>
                   <p className="text-orange-100/80 text-sm leading-relaxed">
-                    An exclusive AKITDA initiative to promote verified IT purchases, ensuring authentic products and services for consumers across Kerala.
+                    Uniting ~2,000 AKITDA members across Kerala under one shared brand—giving customers trusted IT products and service everywhere while members operate independently.
                   </p>
                 </div>
               </a>
