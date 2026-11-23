@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
+import { getAuthedAdmin } from "@/lib/admin-auth";
 import { NotificationService } from "@/lib/notifications";
 import { getFinancialYear } from "@/lib/financial-year";
 import { generateNextMembershipId } from "@/lib/membership-id";
@@ -21,20 +20,23 @@ export async function PUT(
             return NextResponse.json({ message: "Member not found" }, { status: 404 });
         }
 
-        // Verify Admin Token & Role
-        const cookieStore = await cookies();
-        const token = cookieStore.get("admin_token");
-        if (!token) {
+        // Verify Admin (cookie or mobile Bearer token) & Role / Permissions
+        const admin = await getAuthedAdmin(request);
+        if (!admin) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
+        const role: string = admin.role;
 
-        let role = "";
-        try {
-            const secret = new TextEncoder().encode(process.env.JWT_SECRET || "default_secret_dev_only");
-            const { payload } = await jwtVerify(token.value, secret);
-            role = payload.role as string;
-        } catch {
-            return NextResponse.json({ message: "Invalid or expired admin session" }, { status: 401 });
+        const wantsApprovalChange =
+            typeof approvalPresident === "boolean" ||
+            typeof approvalSecretary === "boolean" ||
+            typeof approvalTreasurer === "boolean" ||
+            !!status;
+        if (wantsApprovalChange && !admin.permissions.approveMembers) {
+            return NextResponse.json({ message: "You do not have permission to approve members." }, { status: 403 });
+        }
+        if (markExistingPaid && !admin.permissions.activateMembers) {
+            return NextResponse.json({ message: "You do not have permission to activate members." }, { status: 403 });
         }
 
         // Prepare update data

@@ -3,10 +3,12 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { SignJWT } from "jose";
+import { getPermissionsForAdmin } from "@/lib/admin-auth";
 
 export async function POST(request: Request) {
     try {
-        const { email, password } = await request.json();
+        const { email: rawEmail, password, client } = await request.json();
+        const email = typeof rawEmail === "string" ? rawEmail.trim() : rawEmail;
 
         if (!email || !password) {
             return NextResponse.json(
@@ -15,8 +17,8 @@ export async function POST(request: Request) {
             );
         }
 
-        const admin = await prisma.admin.findUnique({
-            where: { email },
+        const admin = await prisma.admin.findFirst({
+            where: { email: { equals: email, mode: "insensitive" } },
         });
 
         if (!admin) {
@@ -39,10 +41,26 @@ export async function POST(request: Request) {
         const secret = new TextEncoder().encode(
             process.env.JWT_SECRET || "default_secret_dev_only"
         );
+        const isMobile = client === "mobile";
         const token = await new SignJWT({ id: admin.id, email: admin.email, role: admin.role })
             .setProtectedHeader({ alg: "HS256" })
-            .setExpirationTime("24h")
+            .setExpirationTime(isMobile ? "30d" : "24h")
             .sign(secret);
+
+        if (isMobile) {
+            // Mobile app: token returned in body and used as Bearer token
+            return NextResponse.json({
+                message: "Login successful",
+                token,
+                admin: {
+                    id: admin.id,
+                    email: admin.email,
+                    role: admin.role,
+                    name: admin.name,
+                    permissions: await getPermissionsForAdmin(admin.id, admin.role),
+                },
+            });
+        }
 
         // Set Cookie
         (await cookies()).set("admin_token", token, {

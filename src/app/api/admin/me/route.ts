@@ -2,31 +2,24 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
+import { getAuthedAdmin } from "@/lib/admin-auth";
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get("admin_token");
-
-        if (!token) {
+        const authed = await getAuthedAdmin(request);
+        if (!authed) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        const secret = new TextEncoder().encode(
-            process.env.JWT_SECRET || "default_secret_dev_only"
-        );
-
-        const { payload } = await jwtVerify(token.value, secret);
-
         // Fetch fresh data from DB to get profile updates
         const admin = await prisma.admin.findUnique({
-            where: { id: payload.id as string },
+            where: { id: authed.id },
             select: { id: true, email: true, role: true, name: true, phone: true, whatsapp: true }
         });
 
         if (!admin) return NextResponse.json({ message: "Admin not found" }, { status: 404 });
 
-        return NextResponse.json(admin);
+        return NextResponse.json({ ...admin, permissions: authed.permissions });
 
     } catch (error) {
         return NextResponse.json(

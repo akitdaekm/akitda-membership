@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { getAuthedAdmin } from "@/lib/admin-auth";
 import { getFinancialYear } from "@/lib/financial-year";
 import { generateNextMembershipId } from "@/lib/membership-id";
 
@@ -12,10 +12,12 @@ export async function PUT(
         const params = await props.params;
         const { id } = params;
 
-        // Verify Admin Token
-        const cookieStore = await cookies();
-        const token = cookieStore.get("admin_token");
-        if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        // Verify Admin (cookie or mobile Bearer) + permission
+        const admin = await getAuthedAdmin(request);
+        if (!admin) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        if (!admin.permissions.verifyPayments) {
+            return NextResponse.json({ message: "You do not have permission to verify payments." }, { status: 403 });
+        }
 
         // Logic to verify payment
         // 1. Update Payment Status to PAID
