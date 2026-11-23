@@ -72,11 +72,10 @@ fun TeamScreen(vm: AppViewModel) {
     var resetFor by remember { mutableStateOf<AdminUser?>(null) }
     var showAdd by remember { mutableStateOf(false) }
 
-    // Show only Ernakulam District Committee accounts (exclude other 13 districts & state accounts)
+    // Show only Ernakulam District Committee accounts (@akitdaekm.com), excluding all @akitda.in accounts
     val ekmUsers = remember(vm.users) {
         vm.users.filter { u ->
-            val e = u.email.lowercase()
-            e.endsWith("@akitdaekm.com") || e.contains(".ekm@") || !e.endsWith("@akitda.in")
+            !u.email.lowercase().endsWith("@akitda.in")
         }
     }
 
