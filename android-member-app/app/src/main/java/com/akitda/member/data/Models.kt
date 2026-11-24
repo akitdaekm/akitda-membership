@@ -3,9 +3,11 @@ package com.akitda.member.data
 import android.net.Uri
 
 data class Partner(
+    val id: String = "",
     val name: String,
     val phone: String?,
     val email: String?,
+    val photoFile: String? = null,
 )
 
 data class Payment(

@@ -320,6 +320,8 @@ private fun ProfileTab(vm: MemberViewModel) {
     var confirmLogout by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var pendingDocType by remember { mutableStateOf<String?>(null) }
+    var pendingPartnerId by remember { mutableStateOf<String?>(null) }
+    var targetPartnerIdForPicker by remember { mutableStateOf<String?>(null) }
     var pendingDocUri by remember { mutableStateOf<Uri?>(null) }
     var docOtp by remember { mutableStateOf("") }
     var docOtpSent by remember { mutableStateOf(false) }
@@ -327,6 +329,18 @@ private fun ProfileTab(vm: MemberViewModel) {
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             pendingDocType = "profile"
+            pendingPartnerId = null
+            pendingDocUri = uri
+            docOtp = ""
+            docOtpSent = false
+        }
+    }
+
+    val partnerPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val pid = targetPartnerIdForPicker
+        if (uri != null && !pid.isNullOrBlank()) {
+            pendingDocType = "partner_photo"
+            pendingPartnerId = pid
             pendingDocUri = uri
             docOtp = ""
             docOtpSent = false
@@ -454,13 +468,57 @@ private fun ProfileTab(vm: MemberViewModel) {
             if (m.partners.isNotEmpty()) {
                 SectionCard("Partners / Proprietor") {
                     m.partners.forEachIndexed { i, p ->
-                        if (i > 0) Spacer(Modifier.height(8.dp))
-                        Text(p.name, style = MaterialTheme.typography.titleMedium, color = Ink)
-                        Text(
-                            listOfNotNull(p.phone, p.email).filter { it.isNotBlank() }.joinToString(" · "),
-                            color = Muted,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        if (i > 0) Spacer(Modifier.height(12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            val pBmp = vm.partnerBitmaps[p.id]
+                            if (pBmp != null) {
+                                Image(
+                                    bitmap = pBmp.asImageBitmap(),
+                                    contentDescription = p.name,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(52.dp)
+                                        .clip(CircleShape)
+                                        .border(1.dp, Blue.copy(alpha = 0.35f), CircleShape),
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(52.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFE2E8F0)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(Icons.Filled.Person, null, tint = Muted, modifier = Modifier.size(28.dp))
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(p.name, style = MaterialTheme.typography.titleMedium, color = Ink)
+                                Text(
+                                    listOfNotNull(p.phone, p.email).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "—" },
+                                    color = Muted,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            if (p.id.isNotBlank()) {
+                                OutlinedButton(
+                                    onClick = {
+                                        targetPartnerIdForPicker = p.id
+                                        partnerPhotoPicker.launch("image/*")
+                                    },
+                                    enabled = !vm.uploadingDoc,
+                                    shape = RoundedCornerShape(8.dp),
+                                ) {
+                                    Icon(Icons.Filled.CameraAlt, null, Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(if (pBmp != null) "Update" else "Upload")
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -516,7 +574,11 @@ private fun ProfileTab(vm: MemberViewModel) {
     }
 
     if (pendingDocType != null && pendingDocUri != null) {
-        val docLabel = if (pendingDocType == "profile") "Profile Photo" else "GST Certificate"
+        val docLabel = when (pendingDocType) {
+            "profile" -> "Profile Photo"
+            "partner_photo" -> "Partner Photo"
+            else -> "GST Certificate"
+        }
         AlertDialog(
             onDismissRequest = { if (!vm.uploadingDoc) { pendingDocType = null; pendingDocUri = null } },
             title = { Text("Verify OTP to Update $docLabel") },
@@ -549,8 +611,9 @@ private fun ProfileTab(vm: MemberViewModel) {
                     onClick = {
                         val t = pendingDocType ?: return@Button
                         val u = pendingDocUri ?: return@Button
-                        vm.uploadDocument(ctx, t, u, docOtp) {
+                        vm.uploadDocument(ctx, t, u, docOtp, pendingPartnerId) {
                             pendingDocType = null
+                            pendingPartnerId = null
                             pendingDocUri = null
                         }
                     },

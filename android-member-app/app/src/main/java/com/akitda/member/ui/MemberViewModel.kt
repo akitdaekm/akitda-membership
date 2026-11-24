@@ -20,6 +20,7 @@ import com.akitda.member.BuildConfig
 import com.akitda.member.data.ApiClient
 import com.akitda.member.data.ApiException
 import com.akitda.member.data.MemberProfile
+import com.akitda.member.data.Partner
 import com.akitda.member.data.Payment
 import com.akitda.member.data.ProfileUpdateDraft
 import com.akitda.member.data.RegistrationDraft
@@ -71,6 +72,8 @@ class MemberViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var profileBitmap by mutableStateOf<Bitmap?>(null)
         private set
+    var partnerBitmaps by mutableStateOf<Map<String, Bitmap>>(emptyMap())
+        private set
     var message by mutableStateOf<String?>(null)
 
     val lastIdentifier: String get() = store.lastIdentifier.orEmpty()
@@ -86,6 +89,7 @@ class MemberViewModel(app: Application) : AndroidViewModel(app) {
                     val loaded = ApiClient.me()
                     member = loaded
                     loadProfileBitmap(loaded.profilePhoto)
+                    loadPartnerBitmaps(loaded.partners)
                 } catch (e: ApiException) {
                     if (e.code == 401) clearSession()
                     else message = e.message
@@ -103,6 +107,19 @@ class MemberViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch {
             profileBitmap = ApiClient.fetchBitmap(photoUrl)
+        }
+    }
+
+    private fun loadPartnerBitmaps(partners: List<Partner>) {
+        viewModelScope.launch {
+            val map = mutableMapOf<String, Bitmap>()
+            partners.forEach { p ->
+                val url = p.photoFile
+                if (p.id.isNotBlank() && !url.isNullOrBlank()) {
+                    ApiClient.fetchBitmap(url)?.let { bmp -> map[p.id] = bmp }
+                }
+            }
+            partnerBitmaps = map
         }
     }
 
@@ -153,7 +170,10 @@ class MemberViewModel(app: Application) : AndroidViewModel(app) {
                 store.token = token
                 store.lastIdentifier = cleanId
                 ApiClient.token = token
-                member = ApiClient.me()
+                val loaded = ApiClient.me()
+                member = loaded
+                loadProfileBitmap(loaded.profilePhoto)
+                loadPartnerBitmaps(loaded.partners)
                 otpSent = false
             } catch (e: ApiException) {
                 authError = e.message
@@ -170,6 +190,7 @@ class MemberViewModel(app: Application) : AndroidViewModel(app) {
                 val loaded = ApiClient.me()
                 member = loaded
                 loadProfileBitmap(loaded.profilePhoto)
+                loadPartnerBitmaps(loaded.partners)
             } catch (e: ApiException) {
                 if (e.code == 401) clearSession()
                 else message = e.message
@@ -418,14 +439,22 @@ class MemberViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun uploadDocument(context: Context, type: String, uri: Uri, otp: String?, onSuccess: () -> Unit) {
+    fun uploadDocument(
+        context: Context,
+        type: String,
+        uri: Uri,
+        otp: String?,
+        partnerId: String? = null,
+        onSuccess: () -> Unit,
+    ) {
         uploadingDoc = true
         viewModelScope.launch {
             try {
-                val msg = ApiClient.uploadMemberDoc(context, type, uri, otp)
+                val msg = ApiClient.uploadMemberDoc(context, type, uri, otp, partnerId)
                 val loaded = ApiClient.me()
                 member = loaded
                 if (type == "profile") loadProfileBitmap(loaded.profilePhoto)
+                if (type == "partner_photo") loadPartnerBitmaps(loaded.partners)
                 message = msg
                 onSuccess()
             } catch (e: ApiException) {
@@ -439,6 +468,7 @@ class MemberViewModel(app: Application) : AndroidViewModel(app) {
 
     fun logout() {
         profileBitmap = null
+        partnerBitmaps = emptyMap()
         clearSession()
     }
 }

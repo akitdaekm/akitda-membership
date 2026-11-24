@@ -93,7 +93,13 @@ object ApiClient {
             joinedAt = o.str("joinedAt"),
             partners = (0 until partners.length()).map {
                 val p = partners.getJSONObject(it)
-                Partner(p.optString("name"), p.str("phone"), p.str("email"))
+                Partner(
+                    id = p.optString("id"),
+                    name = p.optString("name"),
+                    phone = p.str("phone"),
+                    email = p.str("email"),
+                    photoFile = p.str("photoFile"),
+                )
             },
             payments = (0 until payments.length()).map {
                 val p = payments.getJSONObject(it)
@@ -238,11 +244,17 @@ object ApiClient {
         return res.optString("message", "Profile updated successfully.")
     }
 
-    suspend fun uploadMemberDoc(context: Context, type: String, fileUri: Uri, otp: String?): String =
+    suspend fun uploadMemberDoc(
+        context: Context,
+        type: String,
+        fileUri: Uri,
+        otp: String?,
+        partnerId: String? = null,
+    ): String =
         withContext(Dispatchers.IO) {
             val fileBytes = context.contentResolver.openInputStream(fileUri)?.use { it.readBytes() }
                 ?: throw ApiException("Could not read selected file.")
-            val fileName = queryFileName(context, fileUri) ?: if (type == "profile") "photo.jpg" else "gst.pdf"
+            val fileName = queryFileName(context, fileUri) ?: if (type == "gst") "gst.pdf" else "photo.jpg"
             val mime = context.contentResolver.getType(fileUri)
                 ?: if (fileName.endsWith(".pdf", true)) "application/pdf" else "image/jpeg"
 
@@ -261,6 +273,12 @@ object ApiClient {
                     out.writeBytes("--$boundary\r\n")
                     out.writeBytes("Content-Disposition: form-data; name=\"type\"\r\n\r\n")
                     out.writeBytes("$type\r\n")
+
+                    if (!partnerId.isNullOrBlank()) {
+                        out.writeBytes("--$boundary\r\n")
+                        out.writeBytes("Content-Disposition: form-data; name=\"partnerId\"\r\n\r\n")
+                        out.writeBytes("$partnerId\r\n")
+                    }
 
                     if (!otp.isNullOrBlank()) {
                         out.writeBytes("--$boundary\r\n")
