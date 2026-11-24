@@ -9,6 +9,7 @@ data class Partner(
 )
 
 data class Payment(
+    val id: String = "",
     val amount: Double,
     val year: Int,
     val status: String,
@@ -32,6 +33,8 @@ data class MemberProfile(
     val gstNumber: String,
     val status: String,
     val membershipId: String?,
+    val profilePhoto: String? = null,
+    val gstFile: String? = null,
     val approvalPresident: Boolean,
     val approvalSecretary: Boolean,
     val approvalTreasurer: Boolean,
@@ -75,6 +78,17 @@ data class RegistrationDraft(
     val gstUri: Uri? = null,
     val gstFileName: String? = null,
     val partners: List<PartnerDraft> = listOf(PartnerDraft()),
+)
+
+data class ProfileUpdateDraft(
+    val primaryEmail: String,
+    val gstNumber: String,
+    val companyType: String,
+    val addressBuilding: String,
+    val addressArea: String,
+    val district: String,
+    val unit: String,
+    val pincode: String,
 )
 
 fun statusLabel(status: String) = when (status) {

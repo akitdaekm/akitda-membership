@@ -33,6 +33,14 @@ function ensureFontRegistered() {
     fontRegistered = true;
 }
 
+function formatTitleCase(name: string): string {
+    return name
+        .trim()
+        .split(/\s+/)
+        .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ""))
+        .join(" ");
+}
+
 function resolvePublicImageDataUri(urlOrPath?: string | null): string | undefined {
     if (!urlOrPath) return undefined;
     if (urlOrPath.startsWith("data:") || urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
@@ -192,11 +200,10 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
     memberName: {
-        fontSize: 24,
-        color: "#0f172a",
-        fontFamily: "Times-Bold",
+        fontSize: 30,
+        color: "#1e3a8a",
+        fontFamily: "Times-BoldItalic",
         textAlign: "center",
-        textTransform: "uppercase",
         marginBottom: 4,
         paddingHorizontal: 20,
     },
@@ -475,7 +482,7 @@ export async function GET(request: Request) {
                         View,
                         { style: styles.certifySection },
                         React.createElement(Text, { style: styles.certifyText }, "This is to certify that"),
-                        React.createElement(Text, { style: styles.memberName }, member.companyName),
+                        React.createElement(Text, { style: styles.memberName }, formatTitleCase(member.companyName)),
                         React.createElement(View, { style: styles.nameDivider }),
                         React.createElement(
                             View,

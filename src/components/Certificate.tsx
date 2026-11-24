@@ -281,6 +281,14 @@ interface CertificateProps {
     officialSealUrl?: string;
 }
 
+function formatTitleCase(name: string): string {
+    return name
+        .trim()
+        .split(/\s+/)
+        .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ""))
+        .join(" ");
+}
+
 export const MembershipCertificate = ({ 
     memberName, 
     membershipId, 
@@ -290,6 +298,7 @@ export const MembershipCertificate = ({
     treasurerSignatureUrl,
     officialSealUrl
 }: CertificateProps) => {
+    const formattedMemberName = formatTitleCase(memberName);
     const serialNumber = membershipId
         ? membershipId.startsWith("AKITDA")
             ? membershipId
@@ -369,7 +378,7 @@ export const MembershipCertificate = ({
                         <Text style={styles.certifyText}>This is to certify that</Text>
 
                         {/* Member Firm Name */}
-                        <Text style={styles.memberName}>{memberName}</Text>
+                        <Text style={styles.memberName}>{formattedMemberName}</Text>
                         <View style={styles.nameDivider} />
 
                         {/* Membership ID Box */}

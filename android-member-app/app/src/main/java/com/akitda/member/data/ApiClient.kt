@@ -84,6 +84,8 @@ object ApiClient {
             gstNumber = o.optString("gstNumber"),
             status = o.optString("status"),
             membershipId = o.str("membershipId"),
+            profilePhoto = o.str("profilePhoto"),
+            gstFile = o.str("gstFile"),
             approvalPresident = o.optBoolean("approvalPresident"),
             approvalSecretary = o.optBoolean("approvalSecretary"),
             approvalTreasurer = o.optBoolean("approvalTreasurer"),
@@ -96,6 +98,7 @@ object ApiClient {
             payments = (0 until payments.length()).map {
                 val p = payments.getJSONObject(it)
                 Payment(
+                    id = p.optString("id"),
                     amount = p.optDouble("amount"),
                     year = p.optInt("year"),
                     status = p.optString("status"),
@@ -215,6 +218,107 @@ object ApiClient {
             throw e
         } catch (_: java.io.IOException) {
             throw ApiException("Upload failed. Please check your internet connection.")
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    suspend fun updateProfileAddress(otp: String, draft: ProfileUpdateDraft): String {
+        val body = JSONObject()
+            .put("otp", otp)
+            .put("primaryEmail", draft.primaryEmail.trim().lowercase())
+            .put("gstNumber", draft.gstNumber.trim().uppercase())
+            .put("companyType", draft.companyType)
+            .put("addressBuilding", draft.addressBuilding.trim())
+            .put("addressArea", draft.addressArea.trim())
+            .put("district", draft.district.trim())
+            .put("unit", draft.unit.trim())
+            .put("pincode", draft.pincode.trim())
+        val res = requestJson("POST", "/api/members/me/update-address", body)
+        return res.optString("message", "Profile updated successfully.")
+    }
+
+    suspend fun uploadMemberDoc(context: Context, type: String, fileUri: Uri, otp: String?): String =
+        withContext(Dispatchers.IO) {
+            val fileBytes = context.contentResolver.openInputStream(fileUri)?.use { it.readBytes() }
+                ?: throw ApiException("Could not read selected file.")
+            val fileName = queryFileName(context, fileUri) ?: if (type == "profile") "photo.jpg" else "gst.pdf"
+            val mime = context.contentResolver.getType(fileUri)
+                ?: if (fileName.endsWith(".pdf", true)) "application/pdf" else "image/jpeg"
+
+            val boundary = "----AkitdaDocBoundary${UUID.randomUUID()}"
+            val conn = (URL("${BuildConfig.BASE_URL}/api/members/me/upload-docs").openConnection() as HttpURLConnection)
+            try {
+                conn.requestMethod = "POST"
+                conn.doOutput = true
+                conn.connectTimeout = 25_000
+                conn.readTimeout = 45_000
+                conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                conn.setRequestProperty("Accept", "application/json")
+                token?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
+
+                DataOutputStream(conn.outputStream).use { out ->
+                    out.writeBytes("--$boundary\r\n")
+                    out.writeBytes("Content-Disposition: form-data; name=\"type\"\r\n\r\n")
+                    out.writeBytes("$type\r\n")
+
+                    if (!otp.isNullOrBlank()) {
+                        out.writeBytes("--$boundary\r\n")
+                        out.writeBytes("Content-Disposition: form-data; name=\"otp\"\r\n\r\n")
+                        out.writeBytes("${otp.trim()}\r\n")
+                    }
+
+                    out.writeBytes("--$boundary\r\n")
+                    out.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"$fileName\"\r\n")
+                    out.writeBytes("Content-Type: $mime\r\n\r\n")
+                    out.write(fileBytes)
+                    out.writeBytes("\r\n")
+
+                    out.writeBytes("--$boundary--\r\n")
+                    out.flush()
+                }
+                val res = readJsonResponse(conn)
+                res.optString("message", "Upload successful")
+            } catch (e: ApiException) {
+                throw e
+            } catch (_: java.io.IOException) {
+                throw ApiException("Upload failed. Please check your internet connection.")
+            } finally {
+                conn.disconnect()
+            }
+        }
+
+    suspend fun fetchBitmap(urlOrPath: String): android.graphics.Bitmap? = withContext(Dispatchers.IO) {
+        runCatching {
+            if (urlOrPath.startsWith("data:")) {
+                val base64Part = urlOrPath.substringAfter("base64,", "")
+                if (base64Part.isBlank()) return@runCatching null
+                val bytes = android.util.Base64.decode(base64Part, android.util.Base64.DEFAULT)
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            } else {
+                val fullUrl = if (urlOrPath.startsWith("http")) urlOrPath else BuildConfig.BASE_URL + urlOrPath
+                val bytes = downloadRawUrl(fullUrl)
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            }
+        }.getOrNull()
+    }
+
+    suspend fun downloadRawUrl(fullUrl: String): ByteArray = withContext(Dispatchers.IO) {
+        val conn = (URL(fullUrl).openConnection() as HttpURLConnection)
+        try {
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 20_000
+            conn.readTimeout = 45_000
+            if (fullUrl.startsWith(BuildConfig.BASE_URL)) {
+                token?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
+            }
+            val code = conn.responseCode
+            if (code !in 200..299) throw ApiException("Download failed ($code)", code)
+            conn.inputStream.use { it.readBytes() }
+        } catch (e: ApiException) {
+            throw e
+        } catch (_: java.io.IOException) {
+            throw ApiException("Cannot reach server. Please check your internet connection.")
         } finally {
             conn.disconnect()
         }
