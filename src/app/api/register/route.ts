@@ -2,31 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { saveUploadedFile } from "@/lib/upload";
 import { NotificationService } from "@/lib/notifications";
-import { extractPdfText } from "@/lib/pdf-extract";
-
-const COMPANY_STOP_WORDS = new Set([
-    "PVT", "PRIVATE", "LTD", "LIMITED", "LLP", "INC", "CORP",
-    "MS", "M/S", "CO", "COMPANY", "AND", "THE", "OF", "IN",
-    "INDIA", "KERALA", "ENTERPRISE", "ENTERPRISES", "TRADERS",
-    "SOLUTIONS", "SYSTEMS", "SERVICES", "TECHNOLOGIES", "ASSOCIATES",
-]);
-
-function verifyCompanyNameInPdf(companyName: string, normPdfText: string): boolean {
-    const cleanCompany = companyName.toUpperCase().replace(/[^A-Z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-    const cleanPdf = normPdfText.replace(/[^A-Z0-9\s]/g, " ").replace(/\s+/g, " ");
-
-    if (!cleanCompany) return false;
-    if (cleanPdf.includes(cleanCompany)) return true;
-
-    const allWords = cleanCompany.split(" ").filter((w) => w.length >= 2);
-    const significantWords = allWords.filter((w) => !COMPANY_STOP_WORDS.has(w));
-    const wordsToCheck = significantWords.length > 0 ? significantWords : allWords;
-
-    if (wordsToCheck.length === 0) return false;
-
-    const matchedCount = wordsToCheck.filter((w) => cleanPdf.includes(w)).length;
-    return matchedCount / wordsToCheck.length >= 0.6;
-}
 
 export async function POST(request: Request) {
     try {
@@ -98,49 +73,16 @@ export async function POST(request: Request) {
             );
         }
 
-        // 2. Verify GST Certificate PDF (GSTIN + Company Name)
-        const isPdf =
+        // 2. Validate GST Certificate file type (PDF or Image; admin verifies manually)
+        const fileName = gstFile.name.toLowerCase();
+        const isAllowedFile =
             gstFile.type === "application/pdf" ||
-            gstFile.name.toLowerCase().endsWith(".pdf");
+            gstFile.type.startsWith("image/") ||
+            /\.(pdf|png|jpe?g|webp|gif|bmp)$/i.test(fileName);
 
-        if (!isPdf) {
+        if (!isAllowedFile || gstFile.size === 0) {
             return NextResponse.json(
-                { message: "Please upload your GST Registration Certificate in PDF format (downloaded from gst.gov.in)." },
-                { status: 400 }
-            );
-        }
-
-        const gstBuffer = Buffer.from(await gstFile.arrayBuffer());
-        let pdfText = "";
-        try {
-            pdfText = await extractPdfText(gstBuffer);
-        } catch (pdfErr) {
-            console.error("GST PDF parse error:", pdfErr);
-            return NextResponse.json(
-                { message: "Could not read the uploaded GST PDF file. Please upload a valid GST Certificate PDF." },
-                { status: 400 }
-            );
-        }
-
-        const normPdfText = pdfText.toUpperCase().replace(/\s+/g, " ").trim();
-        if (normPdfText.length < 30) {
-            return NextResponse.json(
-                { message: "The uploaded GST PDF appears to be a scanned image with no readable text. Please upload the original digital GST Certificate PDF downloaded from gst.gov.in." },
-                { status: 400 }
-            );
-        }
-
-        const compactPdfText = normPdfText.replace(/\s+/g, "");
-        if (!compactPdfText.includes(cleanGst)) {
-            return NextResponse.json(
-                { message: `GST Number mismatch: "${cleanGst}" was not found in the uploaded GST Certificate PDF.` },
-                { status: 400 }
-            );
-        }
-
-        if (!verifyCompanyNameInPdf(cleanCompany, normPdfText)) {
-            return NextResponse.json(
-                { message: `Company Name mismatch: "${cleanCompany}" does not match the Legal/Trade Name in the uploaded GST Certificate PDF.` },
+                { message: "Please upload a valid GST Certificate in PDF or image format." },
                 { status: 400 }
             );
         }

@@ -46,7 +46,11 @@ const formSchema = z.object({
     unit: z.string().min(2, "Unit is required."),
     primaryMobile: z.string().length(10, "Mobile number must be 10 digits."),
     primaryEmail: z.string().email("Invalid email address."),
-    gstNumber: z.string().length(15, "GST Number must be 15 characters."),
+    gstNumber: z
+        .string()
+        .trim()
+        .length(15, "GST Number must be 15 characters.")
+        .regex(/^[0-9A-Za-z]{15}$/, "GST Number must be 15 alphanumeric characters."),
     partners: z
         .array(
             z.object({
@@ -467,7 +471,15 @@ export function RegistrationForm() {
                                 <FormItem>
                                     <FormLabel>GST Number</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="GSTIN..." {...field} className="uppercase" />
+                                        <Input
+                                            placeholder="GSTIN..."
+                                            {...field}
+                                            maxLength={15}
+                                            onChange={(e) =>
+                                                field.onChange(e.target.value.replace(/\s+/g, "").toUpperCase())
+                                            }
+                                            className="uppercase"
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
