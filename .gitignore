@@ -63,3 +63,8 @@ baileys_auth/
 /android-member-app/local.properties
 /android-member-app/.idea/
 /android-member-app/release/
+
+# Play Store release keystore & assets
+*.jks
+*.keystore
+/play-store-assets/

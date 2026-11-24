@@ -19,8 +19,24 @@ android {
         buildConfigField("String", "BASE_URL", "\"https://akitdaekm.com\"")
     }
 
+    signingConfigs {
+        create("release") {
+            val ks = rootProject.file("../play-store-assets/keystore/akitda-release.jks")
+            if (ks.exists()) {
+                storeFile = ks
+                storePassword = System.getenv("AKITDA_KEYSTORE_PASS") ?: "AkitdaEkm@2026"
+                keyAlias = "akitda"
+                keyPassword = System.getenv("AKITDA_KEY_PASS") ?: "AkitdaEkm@2026"
+            }
+        }
+    }
+
     buildTypes {
         release {
+            val ks = rootProject.file("../play-store-assets/keystore/akitda-release.jks")
+            if (ks.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
