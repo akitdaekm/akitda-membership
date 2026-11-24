@@ -23,7 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
@@ -157,25 +157,29 @@ private fun HomeTab(vm: MemberViewModel) {
             }
 
             if (m.status == "ACTIVE") {
-                SectionCard("Digital ID Card & Certificate") {
+                SectionCard("Membership Certificate") {
                     Text(
-                        "Your membership is active! Open the web portal to download or print your official Membership Certificate and Digital ID Card.",
+                        "Your membership is active! Tap below to download your official Membership Certificate as a PDF.",
                         color = Muted,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(10.dp))
-                    OutlinedButton(
-                        onClick = {
-                            runCatching {
-                                ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("${BuildConfig.BASE_URL}/dashboard")))
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(46.dp),
+                    Button(
+                        onClick = { vm.downloadCertificate(ctx) },
+                        enabled = !vm.downloadingCertificate,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Blue),
                     ) {
-                        Icon(Icons.Filled.OpenInBrowser, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Open Certificate & ID Card")
+                        if (vm.downloadingCertificate) {
+                            CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                            Spacer(Modifier.width(10.dp))
+                            Text("Downloading PDF...")
+                        } else {
+                            Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Download Certificate (PDF)")
+                        }
                     }
                 }
             }
@@ -185,16 +189,6 @@ private fun HomeTab(vm: MemberViewModel) {
                 InfoRow("Category", if (m.memberType == "EXISTING") "Existing / Renewal" else "New Member")
                 InfoRow("Unit", m.unit)
                 InfoRow("Valid Until", formatDate(m.validUntil) ?: "Pending")
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Approvals (${m.approvalCount}/3)", color = Muted, style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.width(12.dp))
-                    ApprovalDot("P", m.approvalPresident)
-                    Spacer(Modifier.width(6.dp))
-                    ApprovalDot("S", m.approvalSecretary)
-                    Spacer(Modifier.width(6.dp))
-                    ApprovalDot("T", m.approvalTreasurer)
-                }
             }
         }
     }

@@ -220,6 +220,36 @@ object ApiClient {
         }
     }
 
+    suspend fun downloadBytes(path: String): ByteArray = withContext(Dispatchers.IO) {
+        val conn = (URL(BuildConfig.BASE_URL + path).openConnection() as HttpURLConnection)
+        try {
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 20_000
+            conn.readTimeout = 45_000
+            token?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
+            val code = conn.responseCode
+            if (code !in 200..299) {
+                val errText = conn.errorStream?.bufferedReader()?.use(BufferedReader::readText).orEmpty()
+                val msg = try {
+                    JSONObject(errText).str("message")
+                } catch (_: Exception) {
+                    null
+                } ?: when (code) {
+                    401 -> "Session expired. Please log in again."
+                    else -> "Download failed ($code)"
+                }
+                throw ApiException(msg, code)
+            }
+            conn.inputStream.use { it.readBytes() }
+        } catch (e: ApiException) {
+            throw e
+        } catch (_: java.io.IOException) {
+            throw ApiException("Cannot reach server. Please check your internet connection.")
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     fun queryFileName(context: Context, uri: Uri): String? {
         context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
             if (c.moveToFirst()) {
