@@ -118,3 +118,32 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+model AgmRegistration {
+  id           String    @id @default(cuid())
+  passId       String    @unique
+  name         String
+  company      String
+  designation  String    @default("Member")
+  district     String    @default("Ernakulam")
+  phone        String
+  email        String?
+  qrPayload    String
+  memberId     String?
+  registeredAt DateTime  @default(now())
+  scans        AgmScan[]
+}
+
+model AgmScan {
+  id             String           @id @default(cuid())
+  registrationId String?
+  registration   AgmRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  name           String
+  company        String
+  designation    String?
+  district       String?
+  phone          String?
+  fullCode       String
+  badgePrinted   Boolean          @default(true)
+  scannedAt      DateTime         @default(now())
+}
+

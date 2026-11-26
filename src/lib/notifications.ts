@@ -80,6 +80,18 @@ async function sendEmailMessage(to: string, subject: string, text: string, html?
     }
 }
 
+export function formatMemberGreeting(
+    primaryMemberName?: string | null,
+    companyName?: string | null
+): string {
+    const primary = primaryMemberName?.trim() || "";
+    const company = companyName?.trim() || "";
+    if (primary && company) {
+        return `${primary} (${company})`;
+    }
+    return primary || company || "Member";
+}
+
 export const NotificationService = {
     async send(channel: NotificationChannel, payload: NotificationPayload) {
         console.log(`[NotificationService] Sending ${channel} to ${payload.to}`);
@@ -127,7 +139,7 @@ export const NotificationService = {
 
     async sendActivationNotification(name: string, phone: string, email?: string, membershipId?: string) {
         const idText = membershipId ? ` (Membership ID: ${membershipId})` : "";
-        const message = `Dear ${name},\n\nYour AKITDA Membership${idText} is now ACTIVE! You can log in at https://akitdaekm.com/login using OTP to download your Membership Certificate and ID Card.`;
+        const message = `Dear ${name},\n\nYour AKITDA Membership${idText} is now ACTIVE! You can log in at https://akitdaekm.com/login using OTP to download your Membership Certificate.`;
         await Promise.all([
             this.send("WHATSAPP", { to: phone, message }),
             email

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { saveUploadedFile } from "@/lib/upload";
-import { NotificationService } from "@/lib/notifications";
+import { NotificationService, formatMemberGreeting } from "@/lib/notifications";
 
 export async function POST(request: Request) {
     try {
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
         // 5. Send Welcome message via WhatsApp & Email
         try {
             await NotificationService.sendWelcome(
-                member.companyName,
+                formatMemberGreeting(partnersWithPhotos[0]?.name, member.companyName),
                 member.primaryMobile,
                 member.primaryEmail
             );

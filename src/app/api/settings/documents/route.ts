@@ -13,7 +13,7 @@ export interface DocumentVisibilitySettings {
 }
 
 const DEFAULT_SETTINGS: DocumentVisibilitySettings = {
-    showIdCard: true,
+    showIdCard: false,
     showCertificate: true,
     showTaxInvoice: true,
     showReceipt: true,
@@ -29,7 +29,7 @@ export async function GET() {
         }
         const parsed = JSON.parse(record.value);
         return NextResponse.json({
-            showIdCard: parsed.showIdCard ?? true,
+            showIdCard: parsed.showIdCard ?? false,
             showCertificate: parsed.showCertificate ?? true,
             showTaxInvoice: parsed.showTaxInvoice ?? true,
             showReceipt: parsed.showReceipt ?? true,

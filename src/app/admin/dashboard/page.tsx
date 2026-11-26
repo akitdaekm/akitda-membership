@@ -114,7 +114,7 @@ export default function AdminDashboard() {
     const [customPaymentUrl, setCustomPaymentUrl] = useState("");
     const [sendingPaymentLink, setSendingPaymentLink] = useState(false);
     const [docSettings, setDocSettings] = useState({
-        showIdCard: true,
+        showIdCard: false,
         showCertificate: true,
         showTaxInvoice: true,
         showReceipt: true,
@@ -835,6 +835,7 @@ export default function AdminDashboard() {
                                                          </div>
                                                          {member.status === "ACTIVE" && isMounted && (
                                                              <div className="flex flex-col gap-1 mt-1 pt-1 border-t border-slate-800">
+                                                                 {false && (
                                                                  <PDFDownloadLink
                                                                      document={
                                                                          <MemberIDCardDocument
@@ -857,6 +858,7 @@ export default function AdminDashboard() {
                                                                  >
                                                                      {({ loading }) => (loading ? "..." : "🪪 ID Card")}
                                                                  </PDFDownloadLink>
+                                                                 )}
                                                                  <PDFDownloadLink
                                                                      document={
                                                                          <MembershipCertificate

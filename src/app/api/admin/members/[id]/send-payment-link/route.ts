@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
-import { NotificationService } from "@/lib/notifications";
+import { NotificationService, formatMemberGreeting } from "@/lib/notifications";
 import { getFinancialYear } from "@/lib/financial-year";
 
 export async function POST(
@@ -25,7 +25,10 @@ export async function POST(
             return NextResponse.json({ message: "Invalid or expired admin session" }, { status: 401 });
         }
 
-        const member = await prisma.member.findUnique({ where: { id } });
+        const member = await prisma.member.findUnique({
+            where: { id },
+            include: { partners: { orderBy: { id: "asc" }, take: 1 } },
+        });
         if (!member) {
             return NextResponse.json({ message: "Member not found" }, { status: 404 });
         }
@@ -84,7 +87,8 @@ export async function POST(
             },
         });
 
-        const message = `Dear ${member.companyName},\n\nYour AKITDA application is approved! Please complete your ${feeLabel} payment of Rs. ${amount.toFixed(2)} using the link below:\n\n${upiLink}\n\n(UPI ID: 8547026604@okbizaxis)\n\nOnce you complete the payment, please share the payment screenshot/UTR with our committee so we can activate your membership.`;
+        const recipientName = formatMemberGreeting(member.partners?.[0]?.name, member.companyName);
+        const message = `Dear ${recipientName},\n\nYour AKITDA application is approved! Please complete your ${feeLabel} payment of Rs. ${amount.toFixed(2)} using the link below:\n\n${upiLink}\n\n(UPI ID: 8547026604@okbizaxis)\n\nOnce you complete the payment, please share the payment screenshot/UTR with our committee so we can activate your membership.`;
 
         await Promise.all([
             NotificationService.send("WHATSAPP", {

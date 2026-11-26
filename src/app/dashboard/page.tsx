@@ -57,7 +57,7 @@ export default function MemberDashboard() {
     const [upiQrDataUrl, setUpiQrDataUrl] = useState<string>("");
     const [isMounted, setIsMounted] = useState(false);
     const [docSettings, setDocSettings] = useState({
-        showIdCard: true,
+        showIdCard: false,
         showCertificate: true,
         showTaxInvoice: true,
         showReceipt: true,
@@ -843,13 +843,13 @@ export default function MemberDashboard() {
                         </Card>
 
                         {/* Documents Section (Only for ACTIVE members) */}
-                        {member.status === "ACTIVE" && (docSettings.showIdCard || docSettings.showCertificate || docSettings.showTaxInvoice || docSettings.showReceipt) && (
+                        {member.status === "ACTIVE" && (docSettings.showCertificate || docSettings.showTaxInvoice || docSettings.showReceipt) && (
                             <div className="space-y-3">
                                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest pl-1">Legal Documents</h3>
 
                                 {/* GST Certificate moved to Company Profile section */}
 
-                                {/* Digital ID Card */}
+                                {/* Digital ID Card (temporarily hidden)
                                 {docSettings.showIdCard && (
                                 <Card className="overflow-hidden hover:border-amber-400 transition-colors group cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-md">
                                     <div className="p-3 flex items-center gap-3">
@@ -891,6 +891,7 @@ export default function MemberDashboard() {
                                     </div>
                                 </Card>
                                 )}
+                                */}
 
                                 {docSettings.showCertificate && (
                                 <Card className="overflow-hidden hover:border-blue-400 transition-colors group cursor-pointer bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-md">

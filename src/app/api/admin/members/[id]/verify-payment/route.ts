@@ -89,7 +89,10 @@ export async function PUT(
         });
 
         // Generate Membership ID if not present (Format: AKITDA | EKM | 001)
-        const currentMember = await prisma.member.findUnique({ where: { id } });
+        const currentMember = await prisma.member.findUnique({
+            where: { id },
+            include: { partners: { orderBy: { id: "asc" }, take: 1 } },
+        });
         let newMembershipId = undefined;
 
         if (currentMember && !currentMember.membershipId) {
@@ -111,10 +114,10 @@ export async function PUT(
 
         // Send Notifications
         if (currentMember) {
-            const { NotificationService } = await import("@/lib/notifications");
+            const { NotificationService, formatMemberGreeting } = await import("@/lib/notifications");
             const phone = currentMember.primaryMobile;
             const email = currentMember.primaryEmail;
-            const name = currentMember.companyName;
+            const name = formatMemberGreeting(currentMember.partners?.[0]?.name, currentMember.companyName);
 
             // Log the action (Mock)
             await NotificationService.sendInvoiceNotification(name, phone, email, receiptNumber);

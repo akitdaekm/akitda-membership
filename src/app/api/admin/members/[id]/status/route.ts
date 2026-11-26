@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthedAdmin } from "@/lib/admin-auth";
-import { NotificationService } from "@/lib/notifications";
+import { NotificationService, formatMemberGreeting } from "@/lib/notifications";
 import { getFinancialYear } from "@/lib/financial-year";
 import { generateNextMembershipId } from "@/lib/membership-id";
 
@@ -99,11 +99,15 @@ export async function PUT(
             data.validUntil = validUntil;
             data.memberType = "EXISTING";
 
-            const member = await prisma.member.update({ where: { id }, data });
+            const member = await prisma.member.update({
+                where: { id },
+                data,
+                include: { partners: { orderBy: { id: "asc" }, take: 1 } },
+            });
 
             try {
                 await NotificationService.sendActivationNotification(
-                    member.companyName,
+                    formatMemberGreeting(member.partners?.[0]?.name, member.companyName),
                     member.primaryMobile,
                     member.primaryEmail,
                     member.membershipId || undefined
@@ -144,13 +148,14 @@ export async function PUT(
         const member = await prisma.member.update({
             where: { id },
             data,
+            include: { partners: { orderBy: { id: "asc" }, take: 1 } },
         });
 
         // Send Approval Notification (WhatsApp & Email) when newly approved
         if (member.status === "APPROVED" && !wasAlreadyApprovedOrActive) {
             try {
                 await NotificationService.sendApprovalNotification(
-                    member.companyName,
+                    formatMemberGreeting(member.partners?.[0]?.name, member.companyName),
                     member.primaryMobile,
                     member.primaryEmail
                 );
