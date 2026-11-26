@@ -6,6 +6,11 @@ function generatePassId(): string {
     return `AK-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
+function normalizePhoneKey(raw: string): string {
+    const digits = raw.replace(/\D/g, "");
+    return digits.length >= 10 ? digits.slice(-10) : digits;
+}
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
@@ -14,7 +19,7 @@ export async function POST(request: Request) {
         const designation = String(body.designation || "Member").trim() || "Member";
         const district = String(body.district || "Ernakulam").trim() || "Ernakulam";
         const phone = String(body.phone || "").trim();
-        const email = String(body.email || "").trim();
+        const email = String(body.email || "").trim().toLowerCase();
         const memberId = body.memberId ? String(body.memberId).trim() : null;
 
         if (!name || !company || !phone) {
@@ -24,60 +29,69 @@ export async function POST(request: Request) {
             );
         }
 
-        const qrPayload = `${name}|${company}|${designation}|${district}|${phone}`;
+        const phoneKey = normalizePhoneKey(phone);
+        if (phoneKey.length < 10) {
+            return NextResponse.json(
+                { status: "error", message: "Please enter a valid 10-digit phone number." },
+                { status: 400 }
+            );
+        }
 
-        // Reuse passId if already registered with same phone or same name+company
-        const existing = await prisma.agmRegistration.findFirst({
-            where: {
-                OR: [
-                    { phone },
-                    {
-                        AND: [
-                            { name: { equals: name, mode: "insensitive" } },
-                            { company: { equals: company, mode: "insensitive" } },
-                        ],
-                    },
-                ],
-            },
+        // Block duplicate registrations by normalized phone number or email address
+        const existingRegistrations = await prisma.agmRegistration.findMany({
+            select: { id: true, passId: true, phone: true, email: true },
         });
 
-        let registration;
-        if (existing) {
-            registration = await prisma.agmRegistration.update({
-                where: { id: existing.id },
-                data: {
-                    name,
-                    company,
-                    designation,
-                    district,
-                    phone,
-                    email: email || existing.email,
-                    qrPayload,
-                    memberId: memberId || existing.memberId,
+        const phoneDuplicate = existingRegistrations.find(
+            (r) => normalizePhoneKey(r.phone) === phoneKey
+        );
+        if (phoneDuplicate) {
+            return NextResponse.json(
+                {
+                    status: "error",
+                    message: `This phone number is already registered (Pass ID: ${phoneDuplicate.passId}). Duplicate registrations are not allowed. Please contact the AKITDA Admin if you need changes.`,
                 },
-            });
-        } else {
-            let passId = generatePassId();
-            for (let i = 0; i < 5; i++) {
-                const clash = await prisma.agmRegistration.findUnique({ where: { passId } });
-                if (!clash) break;
-                passId = generatePassId();
-            }
-
-            registration = await prisma.agmRegistration.create({
-                data: {
-                    passId,
-                    name,
-                    company,
-                    designation,
-                    district,
-                    phone,
-                    email: email || null,
-                    qrPayload,
-                    memberId,
-                },
-            });
+                { status: 409 }
+            );
         }
+
+        if (email) {
+            const emailDuplicate = existingRegistrations.find(
+                (r) => r.email && r.email.trim().toLowerCase() === email
+            );
+            if (emailDuplicate) {
+                return NextResponse.json(
+                    {
+                        status: "error",
+                        message: `This email address is already registered (Pass ID: ${emailDuplicate.passId}). Duplicate registrations are not allowed. Please contact the AKITDA Admin if you need changes.`,
+                    },
+                    { status: 409 }
+                );
+            }
+        }
+
+        const qrPayload = `${name}|${company}|${designation}|${district}|${phone}`;
+
+        let passId = generatePassId();
+        for (let i = 0; i < 5; i++) {
+            const clash = await prisma.agmRegistration.findUnique({ where: { passId } });
+            if (!clash) break;
+            passId = generatePassId();
+        }
+
+        const registration = await prisma.agmRegistration.create({
+            data: {
+                passId,
+                name,
+                company,
+                designation,
+                district,
+                phone,
+                email: email || null,
+                qrPayload,
+                memberId,
+            },
+        });
 
         return NextResponse.json({ status: "success", registration });
     } catch (error) {

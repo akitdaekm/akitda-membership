@@ -128,6 +128,16 @@ export default function AgmAdminPage() {
         }
     };
 
+    const handleDeleteRegistration = async (regId: string, passId: string) => {
+        if (!window.confirm(`Delete registration ${passId}? The member will be able to register again.`)) {
+            return;
+        }
+        const res = await fetch(`/api/agm/registrations/${regId}`, { method: "DELETE" });
+        if (res.ok) {
+            await loadData();
+        }
+    };
+
     const handleSaveScannerUser = async (e: React.FormEvent) => {
         e.preventDefault();
         setUserMsg(null);
@@ -396,6 +406,7 @@ export default function AgmAdminPage() {
                                         <th className="py-3 px-3">District</th>
                                         <th className="py-3 px-3">Phone</th>
                                         <th className="py-3 px-3">Status</th>
+                                        <th className="py-3 px-3 text-right">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800/70">
@@ -423,6 +434,16 @@ export default function AgmAdminPage() {
                                                         Registered
                                                     </span>
                                                 )}
+                                            </td>
+                                            <td className="py-2.5 px-3 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteRegistration(r.id, r.passId)}
+                                                    className="p-1.5 text-slate-400 hover:text-red-400 cursor-pointer"
+                                                    title="Delete registration"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
