@@ -7,7 +7,7 @@ import {
     Calendar,
     CheckCircle2,
     Download,
-    Printer,
+    MessageCircle,
     RotateCcw,
     Shield,
     Sparkles,
@@ -65,6 +65,8 @@ export default function AgmRegistrationPage() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [lookupPassId, setLookupPassId] = useState("");
     const [lookingUpPass, setLookingUpPass] = useState(false);
+    const [sendingWa, setSendingWa] = useState(false);
+    const [waStatus, setWaStatus] = useState<{ ok: boolean; text: string } | null>(null);
     const [registration, setRegistration] = useState<RegistrationResult | null>(null);
     const [qrDataUrl, setQrDataUrl] = useState<string>("");
 
@@ -191,6 +193,7 @@ export default function AgmRegistrationPage() {
     const handleReset = () => {
         setRegistration(null);
         setQrDataUrl("");
+        setWaStatus(null);
         setFullName("");
         setCompany("");
         setDesignation("Member");
@@ -198,6 +201,38 @@ export default function AgmRegistrationPage() {
         setPhone("");
         setEmail("");
         setErrorMsg(null);
+    };
+
+    const handleSendToWhatsApp = async () => {
+        if (!registration || sendingWa) return;
+        setSendingWa(true);
+        setWaStatus(null);
+        try {
+            const res = await fetch("/api/agm/send-whatsapp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ passId: registration.passId }),
+            });
+            const data = await res.json();
+            if (!res.ok || data.status !== "success") {
+                setWaStatus({
+                    ok: false,
+                    text: data.message || "Could not send QR Pass to WhatsApp.",
+                });
+                return;
+            }
+            setWaStatus({
+                ok: true,
+                text: data.message || `QR Pass sent to WhatsApp (${registration.phone})!`,
+            });
+        } catch {
+            setWaStatus({
+                ok: false,
+                text: "Network error while sending to WhatsApp.",
+            });
+        } finally {
+            setSendingWa(false);
+        }
     };
 
     return (
@@ -495,11 +530,12 @@ export default function AgmRegistrationPage() {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => window.print()}
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-sm font-semibold transition-colors cursor-pointer"
+                                    onClick={handleSendToWhatsApp}
+                                    disabled={sendingWa}
+                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-semibold transition-colors cursor-pointer"
                                 >
-                                    <Printer className="h-4 w-4" />
-                                    Print Pass
+                                    <MessageCircle className="h-4 w-4" />
+                                    {sendingWa ? "Sending..." : "Send to WhatsApp"}
                                 </button>
                                 <button
                                     type="button"
@@ -510,6 +546,18 @@ export default function AgmRegistrationPage() {
                                     Register Another
                                 </button>
                             </div>
+
+                            {waStatus && (
+                                <div
+                                    className={`p-3 rounded-xl text-xs font-medium border ${
+                                        waStatus.ok
+                                            ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
+                                            : "bg-red-500/15 border-red-500/30 text-red-300"
+                                    }`}
+                                >
+                                    {waStatus.text}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -249,10 +249,10 @@ const server = http.createServer(async (req, res) => {
         req.on("data", chunk => { body += chunk; });
         req.on("end", async () => {
             try {
-                const { to, content } = JSON.parse(body || "{}");
-                if (!to || !content) {
+                const { to, content, imageBase64 } = JSON.parse(body || "{}");
+                if (!to || (!content && !imageBase64)) {
                     res.writeHead(400, { "Content-Type": "application/json" });
-                    res.end(JSON.stringify({ error: "Missing 'to' or 'content' in body" }));
+                    res.end(JSON.stringify({ error: "Missing 'to' or 'content'/'imageBase64' in body" }));
                     return;
                 }
 
@@ -262,15 +262,24 @@ const server = http.createServer(async (req, res) => {
                     return;
                 }
 
-                // Format JID: remove non-digits, ensure country code 91 if 10 digits
+                // Format JID: remove non-digits, strip leading 0 on 11-digit Indian numbers, ensure country code 91 if 10 digits
                 let cleanNumber = to.replace(/[^0-9]/g, "");
+                if (cleanNumber.length === 11 && cleanNumber.startsWith("0")) {
+                    cleanNumber = cleanNumber.slice(1);
+                }
                 if (cleanNumber.length === 10) {
                     cleanNumber = `91${cleanNumber}`;
                 }
                 const jid = `${cleanNumber}@s.whatsapp.net`;
 
-                console.log(`[WhatsApp Outgoing] Sending message to: ${jid}`);
-                const sentMessage = await sock.sendMessage(jid, { text: content });
+                console.log(`[WhatsApp Outgoing] Sending ${imageBase64 ? "image" : "message"} to: ${jid}`);
+                const msgPayload = imageBase64
+                    ? {
+                          image: Buffer.from(imageBase64.replace(/^data:image\/\w+;base64,/, ""), "base64"),
+                          caption: content || "",
+                      }
+                    : { text: content };
+                const sentMessage = await sock.sendMessage(jid, msgPayload);
 
                 res.writeHead(200, { "Content-Type": "application/json" });
                 res.end(JSON.stringify({ success: true, messageId: sentMessage.key.id, to: jid }));
