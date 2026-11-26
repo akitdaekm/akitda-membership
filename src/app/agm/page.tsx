@@ -63,12 +63,25 @@ export default function AgmRegistrationPage() {
 
     const [submitting, setSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [lookupPassId, setLookupPassId] = useState("");
+    const [lookingUpPass, setLookingUpPass] = useState(false);
     const [registration, setRegistration] = useState<RegistrationResult | null>(null);
     const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
+    const openPassCard = async (reg: RegistrationResult) => {
+        const qrUrl = await QRCode.toDataURL(reg.qrPayload, {
+            width: 320,
+            margin: 2,
+            color: { dark: "#0f172a", light: "#ffffff" },
+        });
+        setQrDataUrl(qrUrl);
+        setRegistration(reg);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMsg(null);
+        setLookupPassId("");
         setSubmitting(true);
 
         try {
@@ -87,21 +100,37 @@ export default function AgmRegistrationPage() {
             const data = await res.json();
             if (!res.ok || data.status !== "success") {
                 setErrorMsg(data.message || "Registration failed. Please check your details.");
+                if (data.existingPassId) {
+                    setLookupPassId(data.existingPassId);
+                }
                 return;
             }
 
-            const reg: RegistrationResult = data.registration;
-            const qrUrl = await QRCode.toDataURL(reg.qrPayload, {
-                width: 320,
-                margin: 2,
-                color: { dark: "#0f172a", light: "#ffffff" },
-            });
-            setQrDataUrl(qrUrl);
-            setRegistration(reg);
+            await openPassCard(data.registration);
         } catch {
             setErrorMsg("Network error while submitting registration. Please try again.");
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleOpenExistingPass = async () => {
+        const id = lookupPassId.trim();
+        if (!id || lookingUpPass) return;
+        setLookingUpPass(true);
+        try {
+            const res = await fetch(`/api/agm/pass?passId=${encodeURIComponent(id)}`);
+            const data = await res.json();
+            if (!res.ok || data.status !== "success") {
+                setErrorMsg(data.message || "Could not find pass.");
+                return;
+            }
+            setErrorMsg(null);
+            await openPassCard(data.registration);
+        } catch {
+            setErrorMsg("Network error while loading your pass.");
+        } finally {
+            setLookingUpPass(false);
         }
     };
 
@@ -357,8 +386,32 @@ export default function AgmRegistrationPage() {
                                 </div>
 
                                 {errorMsg && (
-                                    <div className="p-3 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-medium">
-                                        {errorMsg}
+                                    <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-200 text-xs space-y-3">
+                                        <div className="font-medium">{errorMsg}</div>
+                                        {lookupPassId !== "" && (
+                                            <div className="pt-2 border-t border-red-500/25 space-y-2">
+                                                <div className="text-[11px] text-orange-200 font-semibold">
+                                                    Open Your Existing QR Pass by Pass ID:
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={lookupPassId}
+                                                        onChange={(e) => setLookupPassId(e.target.value)}
+                                                        placeholder="Enter Pass ID (e.g. AK-AB713E)"
+                                                        className="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleOpenExistingPass}
+                                                        disabled={lookingUpPass}
+                                                        className="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-slate-950 font-bold text-xs cursor-pointer shrink-0"
+                                                    >
+                                                        {lookingUpPass ? "Opening..." : "Open Pass"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

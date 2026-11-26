@@ -49,6 +49,7 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 {
                     status: "error",
+                    existingPassId: phoneDuplicate.passId,
                     message: `This phone number is already registered (Pass ID: ${phoneDuplicate.passId}). Duplicate registrations are not allowed. Please contact the AKITDA Admin if you need changes.`,
                 },
                 { status: 409 }
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
                 return NextResponse.json(
                     {
                         status: "error",
+                        existingPassId: emailDuplicate.passId,
                         message: `This email address is already registered (Pass ID: ${emailDuplicate.passId}). Duplicate registrations are not allowed. Please contact the AKITDA Admin if you need changes.`,
                     },
                     { status: 409 }
